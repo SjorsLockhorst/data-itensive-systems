@@ -17,8 +17,13 @@ def sample_item(dist: Dict[K, float]) -> K:
     )[0]
 
 
+class ImmutableModel(BaseModel):
+    class Config:
+        frozen = True
+
+
 # TODO: Make these immutable
-class Trip(BaseModel):
+class Trip(ImmutableModel):
 
     from_city: str
     to_city: str
@@ -26,7 +31,7 @@ class Trip(BaseModel):
     merch: List[MerchItem]
 
 
-class Route(BaseModel):
+class Route(ImmutableModel):
     id: int
     route: List[Trip]
 
@@ -85,12 +90,10 @@ class RouteGenerator:
 
         return trips
 
-
     def gen_route(self, id: int) -> List[Trip]:
         route_len = random.randint(*self.route_len_range)
         route = self.gen_trips(route_len)
         return Route(id=id, route=route)
-
 
 
 def gen_uniform_dist(keys: List[Any]) -> Dict[Any, float]:
