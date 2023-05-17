@@ -17,6 +17,7 @@ def sample_item(dist: Dict[K, float]) -> K:
     )[0]
 
 
+# TODO: Make these immutable
 class Trip(BaseModel):
 
     from_city: str
@@ -57,6 +58,7 @@ class RouteGenerator:
         merch_items_n = random.randint(*self.merch_items_n_range)
         return (merch_name, merch_items_n)
 
+    # TODO: Make sure that each from, to city pair is unique route
     def gen_trip(self, from_city: Optional[str] = None) -> Trip:
         if not from_city:
             from_city = self.gen_city()
@@ -66,6 +68,8 @@ class RouteGenerator:
         to_city = self.gen_city(other_city_prior_prob)
 
         merch_len = random.randint(*self.merch_len_range)
+
+        # TODO: Make the merch items unique
         merch = [self.gen_merch_item() for _ in range(merch_len)]
 
         return Trip(from_city=from_city, to_city=to_city, merch=merch)
@@ -101,7 +105,7 @@ if __name__ == "__main__":
     city_uni_dist = gen_uniform_dist(cities)
 
     MERCH_LEN_RANGE = (1, 3)
-    MERCH_ITEMS_N_RANGE = 100, 300
+    MERCH_ITEMS_N_RANGE = (100, 300)
 
     ROUTE_LEN_RANGE = (1, 5)
 
