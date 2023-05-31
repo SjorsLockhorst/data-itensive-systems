@@ -258,6 +258,11 @@ def noise_route(
             merch_names = {merch_name for merch_name, _ in trip.merch}
             adjusted_dist = adjust(data_gen.merch_dist, merch_names)
             if adjusted_dist:
+
+                # Make sure that we can never sample more items than we have
+                if n_new_merch > len(adjusted_dist):
+                    n_new_merch = len(adjusted_dist)
+
                 new_merch = data_gen.gen_merch_items(n_new_merch, adjusted_dist)
                 noised_merch += list(new_merch)
             else:
@@ -282,7 +287,7 @@ def noise_route(
 # %%
 if __name__ == "__main__":
 
-    merch_opts = {"Apples", "Pears", "Bananas"}
+    merch_opts = {"Apples", "Pears", "Bananas", "Kiwis", "Oranges", "Mandarins"}
     cities = {"Amsterdam", "Utrecht", "Delft"}
 
     merch_uni_dist = get_uni_dist_cat(merch_opts)
@@ -310,7 +315,7 @@ if __name__ == "__main__":
     merch_item_noise_map = {
         merch_name: NormalIntSampler(-5, 5) for merch_name in merch_opts
     }
-    merch_len_noiser = NormalIntSampler(-3, 3)
+    merch_len_noiser = UniformIntSampler(0, 20)
     route_to_noise = routes[0]
     noised_route = noise_route(route_to_noise, 42, generator,
                 merch_item_noise_map, merch_len_noiser)
