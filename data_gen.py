@@ -1,5 +1,4 @@
 import abc
-import time
 from dataclasses import dataclass
 from typing import (
     Any,
@@ -10,6 +9,7 @@ from typing import (
     Set,
     Tuple,
     TypeVar,
+    Union,
 )
 
 import numpy as np  # type: ignore
@@ -58,13 +58,14 @@ class NormalIntSampler(IntSampler):
             self.mean = mean
 
         if not std:
-            self.std = (self.upper - self.lower) / 6  # This std seems to be sensible
+            self.std = (self.upper - self.lower) / \
+                6  # This std seems to be sensible
         else:
             self.std = std
 
     def gen(self) -> int:
         """Generate integer according to Gaussian distribution."""
-        return np.random.normal(self.mean, self.std)
+        return int(np.random.normal(self.mean, self.std))
 
 
 class ImmutableModel(BaseModel):
@@ -84,6 +85,13 @@ class Trip(ImmutableModel):
 class Route(ImmutableModel):
     id: int
     route: Tuple[Trip, ...]
+
+    def __iter__(self):
+        for trip in self.route:
+            yield trip
+
+class NoisedRoute(Route):
+    parent_route_id: int
 
 
 @dataclass
@@ -105,8 +113,8 @@ class RouteGenerator:
     route_len_sampler: IntSampler
 
     def gen_city(
-            self,
-            city_prior_dist: Optional[Dict[str, float]] = None
+        self,
+        city_prior_dist: Optional[Dict[str, float]] = None
     ) -> str:
         """Generate a random city according to some distribution."""
         if not city_prior_dist:
@@ -114,10 +122,17 @@ class RouteGenerator:
 
         return sample_item(city_prior_dist)
 
-    def gen_merch_items(self, merch_len: int) -> Tuple[MerchItem, ...]:
+    def gen_merch_items(
+            self,
+            merch_len: int,
+            merch_dist: Optional[Dict[str, float]] = None
+    ) -> Tuple[MerchItem, ...]:
         """Gen some amount of merch items."""
 
-        merch_names = sample_items(self.merch_dist, merch_len)
+        if merch_dist is None:
+            merch_dist = self.merch_dist
+
+        merch_names = sample_items(merch_dist, merch_len)
 
         # Make sure all merch item names are unique
         assert len(merch_names) == len(set(merch_names))
@@ -171,7 +186,12 @@ def get_uni_dist_cat(keys: Set[Any]) -> Dict[Any, float]:
 
 def sample_items(dist: Dict[K, float], k: int) -> List[K]:
     """Sample keys from a dictionary according to the weights in values."""
-    return np.random.choice(list(dist.keys()), size=k, replace=False, p=list(dist.values()))
+    return np.random.choice(
+        list(dist.keys()),
+        size=k,
+        replace=False,
+        p=list(dist.values())
+    )
 
 
 def sample_item(dist: Dict[K, float]) -> K:
@@ -179,21 +199,87 @@ def sample_item(dist: Dict[K, float]) -> K:
     return sample_items(dist, 1)[0]
 
 
-def adjust(dist: Dict[K, float], to_remove: K) -> Dict[K, float]:
+def adjust(dist: Dict[K, float], to_remove: Union[K,  Set[K]]) -> Dict[K, float]:
     """Adjust a given distribution after removing an element."""
-    p_remove = dist[to_remove]
+    if not isinstance(to_remove, set):
+        p_remove = dist[to_remove]
+        to_remove = set([to_remove])
+    else:
+        p_remove = sum(dist[key] for key in to_remove)
 
     total_p = sum(dist.values())
     new_p = total_p - p_remove
 
     remaining_elements = {
         k: v * total_p / new_p for k,
-        v in dist.items() if k != to_remove
+        v in dist.items() if k not in to_remove
     }
 
     return remaining_elements
 
 
+def noise_route(
+        route: Route,
+        id: int,
+        data_gen: RouteGenerator,
+        merch_item_noise_map: Dict[str, IntSampler],
+        merch_len_noiser: IntSampler
+) -> Route:
+    # TODO: How do we add / remove routes?
+    # TODO: Should we change from / to city with some probability?
+    noised_trips = []
+    for trip in route:
+        noised_merch = []
+
+        # Noise merch amount
+        for merch_name, amount in trip.merch:
+            merch_item_noise = merch_item_noise_map[merch_name].gen()
+            noised_amount = abs(amount + merch_item_noise)
+            noised_merch.append((merch_name, noised_amount))
+
+        # Noise merch length
+        merch_len_noise = merch_len_noiser.gen()
+        noised_merch_len = abs(merch_len_noise + len(trip.merch))
+
+        # If we have a shorter merch length, sample that amount of items from the merch
+        if noised_merch_len < len(trip.merch):
+            merch_to_keep_indices = np.random.choice(
+                np.arange(0, len(trip.merch) - 1),
+                size=noised_merch_len,
+                replace=False
+            )
+            noised_merch = [noised_merch[idx]
+                            for idx in merch_to_keep_indices]
+
+        # If we have more items, generate some new once, excluding elements currently
+        # in merch.
+        elif noised_merch_len > len(trip.merch):
+            n_new_merch = noised_merch_len - len(trip.merch)
+            merch_names = {merch_name for merch_name, _ in trip.merch}
+            adjusted_dist = adjust(data_gen.merch_dist, merch_names)
+            if adjusted_dist:
+                new_merch = data_gen.gen_merch_items(n_new_merch, adjusted_dist)
+                noised_merch += list(new_merch)
+            else:
+                noised_merch.append(trip.merch)
+
+        # Create new trip
+        noised_trip = Trip(
+            from_city=trip.from_city,
+            to_city=trip.to_city,
+            merch=tuple(noised_merch)
+        )
+        # print(trip)
+        # print(noised_trip)
+        noised_trips.append(noised_trip)
+
+    return NoisedRoute(
+        id=id,
+        route=noised_trips,
+        parent_route_id=route.id
+    )
+
+# %%
 if __name__ == "__main__":
 
     merch_opts = {"Apples", "Pears", "Bananas"}
@@ -219,11 +305,17 @@ if __name__ == "__main__":
         route_len_sampler
     )
 
-    N_ROUTES = 100
-
-    start = time.time()
+    N_ROUTES = 3
     routes = [generator.gen_route(i) for i in range(N_ROUTES)]
-    end = time.time()
-    print(routes)
-    print(f"Generated {N_ROUTES} in {end - start} seconds.")
-    # print(routes)
+    merch_item_noise_map = {
+        merch_name: NormalIntSampler(-5, 5) for merch_name in merch_opts
+    }
+    merch_len_noiser = NormalIntSampler(-3, 3)
+    route_to_noise = routes[0]
+    noised_route = noise_route(route_to_noise, 42, generator,
+                merch_item_noise_map, merch_len_noiser)
+
+    print("Original")
+    print(route_to_noise)
+    print("Noised")
+    print(noised_route)
