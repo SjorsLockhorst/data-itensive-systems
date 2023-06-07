@@ -186,7 +186,8 @@ class RouteGenerator:
 
 
 def get_uni_dist_cat(keys: Set[Any]) -> Dict[Any, float]:
-    return {key: 1/len(keys) for key in keys}
+    prob = 1 / len(keys)
+    return {key: prob for key in keys}
 
 
 def sample_items(dist: Dict[K, float], k: int) -> List[K]:
@@ -325,7 +326,7 @@ if __name__ == "__main__":
 
     start = time.time()
     # Options for planned routes
-    N_PLANNED_ROUTES = 1_000
+    N_PLANNED_ROUTES = 2
 
     merch_items = {"Apples", "Pears", "Bananas",
                    "Kiwis", "Oranges", "Mandarins"}
@@ -350,7 +351,7 @@ if __name__ == "__main__":
     planned_routes = [generator.gen_route(i) for i in range(N_PLANNED_ROUTES)]
 
     # Options for planned routes
-    N_ACTUAL_ROUTES = 10_000
+    N_ACTUAL_ROUTES = 4
 
     # How much each merch quantity will be noised
     merch_item_noise_map = {
@@ -359,7 +360,7 @@ if __name__ == "__main__":
 
     # How big each trip merch length will be
     merch_len_noiser = NormalIntSampler(-2, 2)
-    route_len_sampler = NormalIntSampler(-2, 2)
+    route_len_sampler = NormalIntSampler(-1, 1)
 
     actual_routes = []
     planned_routes_uni_dist = get_uni_dist_cat(planned_routes)
@@ -375,7 +376,7 @@ if __name__ == "__main__":
         )
         actual_routes.append(actual_route)
 
-    print(planned_routes)
-    print(actual_routes)
+    print(planned_routes[0])
+    print(actual_routes[0])
     end = time.time()
     print(f"{end - start} seconds elapsed.")
