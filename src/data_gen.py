@@ -10,9 +10,10 @@ from uuid import uuid4
 import numpy as np  # type: ignore
 from pydantic import BaseModel, Field  # type: ignore
 
-K = TypeVar("K")
+DIR_PATH: Final = os.path.dirname(os.path.realpath(__file__))
+CONFIG_PATH: Final = os.path.join(DIR_PATH, "data_gen_config.yaml")
 
-MerchItem = Tuple[str, int]
+K = TypeVar("K")
 
 
 class IntSampler(metaclass=abc.ABCMeta):
@@ -70,8 +71,7 @@ class ImmutableModel(BaseModel):
 class Trip(ImmutableModel):
     from_city: str
     to_city: str
-
-    merch: Tuple[MerchItem, ...]
+    merch: Dict[str, int]
 
 
 class Route(ImmutableModel):
@@ -116,7 +116,7 @@ class RouteGenerator:
 
     def gen_merch_items(
         self, merch_len: int, merch_dist: Optional[Dict[str, float]] = None
-    ) -> Tuple[MerchItem, ...]:
+    ) -> Dict[str, int]:
         """Gen some amount of merch items."""
 
         if merch_dist is None:
@@ -128,11 +128,10 @@ class RouteGenerator:
         assert len(merch_names) == len(set(merch_names))
 
         # Generate a random amount of merch items for each merch item name
-        merch_items = [
-            (merch_name, self.merch_sampler_map[merch_name].gen())
+        return {
+            merch_name: self.merch_sampler_map[merch_name].gen()
             for merch_name in merch_names
-        ]
-        return tuple(merch_items)
+        }
 
     def gen_trip(self, from_city: Optional[str] = None) -> Trip:
         """Generate a trip."""
@@ -234,14 +233,14 @@ def noise_route(
     noised_trips = []
 
     for trip in trips_to_noise:
-        noised_merch = []
+        noised_merch = {}
 
         # Noise merch amount
-        for merch_name, amount in trip.merch:
+        for merch_name, amount in trip.merch.items():
             merch_item_noise = merch_item_noise_map[merch_name].gen()
             noised_amount = amount + merch_item_noise
             if noised_amount > 0:
-                noised_merch.append((merch_name, noised_amount))
+                noised_merch[merch_name] = noised_amount
 
         # Noise merch length
         merch_len_noise = merch_len_noiser.gen()
@@ -251,16 +250,16 @@ def noise_route(
 
         # If we have a shorter merch length, sample that amount of items from the merch
         if noised_merch_len < len(trip.merch):
-            merch_to_keep_indices = np.random.choice(
-                np.arange(0, len(trip.merch) - 1), size=noised_merch_len, replace=False
+            merch_to_keep_keys = np.random.choice(
+                list(trip.merch.keys()), size=noised_merch_len, replace=False
             )
-            noised_merch = [noised_merch[idx] for idx in merch_to_keep_indices]
+            noised_merch = {key: trip.merch[key] for key in merch_to_keep_keys}
 
         # If we have more items, generate some new once, excluding elements currently
         # in merch.
         elif noised_merch_len > len(trip.merch):
             n_new_merch = noised_merch_len - len(trip.merch)
-            merch_names = {merch_name for merch_name, _ in trip.merch}
+            merch_names = set(trip.merch.keys())
             adjusted_dist = adjust(data_gen.merch_dist, merch_names)
             if adjusted_dist:
                 # Make sure that we can never sample more items than we have
@@ -268,13 +267,13 @@ def noise_route(
                     n_new_merch = len(adjusted_dist)
 
                 new_merch = data_gen.gen_merch_items(n_new_merch, adjusted_dist)
-                noised_merch += list(new_merch)
+                noised_merch.update(new_merch)
             else:
-                noised_merch.append(trip.merch)
+                noised_merch.update(trip.merch)
 
         # Create new trip
         noised_trip = Trip(
-            from_city=trip.from_city, to_city=trip.to_city, merch=tuple(noised_merch)
+            from_city=trip.from_city, to_city=trip.to_city, merch=noised_merch
         )
         noised_trips.append(noised_trip)
 
@@ -288,14 +287,10 @@ def noise_route(
     return NoisedRoute(route=noised_trips, original_route_uuid=route.uuid)
 
 
-DIR_PATH: Final = os.path.dirname(os.path.realpath(__file__))
-CONFIG_PATH: Final = os.path.join(DIR_PATH, "data_gen_config.yaml")
-
-
 if __name__ == "__main__":
     start = time.time()
     # Options for planned routes
-    with open(CONFIG_PATH, encoding="ascii") as f:
+    with open(CONFIG_PATH, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     n_planned_routes = config["n_planned_routes"]
@@ -343,12 +338,10 @@ if __name__ == "__main__":
         route_len_sampler,
     )
     planned_routes = [generator.gen_route() for _ in range(n_planned_routes)]
-
     actual_routes = []
-    planned_routes_uni_dist = get_uni_dist_cat(planned_routes)
 
     for i in range(n_actual_routes):
-        picked_actual_route = sample_item(planned_routes_uni_dist)
+        picked_actual_route = np.random.choice(planned_routes)
         actual_route = noise_route(
             picked_actual_route,
             generator,
@@ -358,9 +351,9 @@ if __name__ == "__main__":
         )
         actual_routes.append(actual_route)
 
-    with open("planned_routes.json", "w", encoding="ascii") as f:
+    with open("planned_routes.json", "w", encoding="utf-8") as f:
         f.write(json.dumps([route.dict() for route in planned_routes]))
-    with open("actual_routes.json", "w", encoding="ascii") as f:
+    with open("actual_routes.json", "w", encoding="utf-8") as f:
         f.write(json.dumps([route.dict() for route in actual_routes]))
 
     end = time.time()
