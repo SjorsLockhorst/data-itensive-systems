@@ -1,8 +1,10 @@
 import abc
+import os
+import yaml
 import json
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union
+from typing import Any, Dict, Final, List, Mapping, Optional, Set, Tuple, TypeVar, Union
 from uuid import uuid4
 
 import numpy as np  # type: ignore
@@ -286,23 +288,53 @@ def noise_route(
     return NoisedRoute(route=noised_trips, original_route_uuid=route.uuid)
 
 
-# %%
+DIR_PATH: Final = os.path.dirname(os.path.realpath(__file__))
+CONFIG_PATH: Final = os.path.join(DIR_PATH, "data_gen_config.yaml")
+
+
 if __name__ == "__main__":
     start = time.time()
     # Options for planned routes
-    N_PLANNED_ROUTES = 2
+    with open(CONFIG_PATH, encoding="ascii") as f:
+        config = yaml.safe_load(f)
 
-    merch_items = {"Apples", "Pears", "Bananas", "Kiwis", "Oranges", "Mandarins"}
-    cities = {"Amsterdam", "Utrecht", "Delft"}
+    n_planned_routes = config["n_planned_routes"]
+    n_actual_routes = config["n_actual_routes"]
+
+    merch_items = config["merch_items"]
+    cities = config["cities"]
+
+    merch_len_sampler = UniformIntSampler(
+        config["merch_len_sampler"]["low"], config["merch_len_sampler"]["high"]
+    )
+    merch_sampler_map = {
+        merch_name: UniformIntSampler(
+            config["merch_sampler_map"]["low"], config["merch_sampler_map"]["high"]
+        )
+        for merch_name in merch_items
+    }
+    route_len_sampler = UniformIntSampler(
+        config["route_len_sampler"]["low"], config["route_len_sampler"]["high"]
+    )
+
+    merch_item_noise_map = {
+        merch_name: NormalIntSampler(
+            config["merch_item_noise_map"]["low"],
+            config["merch_item_noise_map"]["high"],
+        )
+        for merch_name in merch_items
+    }
+    merch_len_noiser = NormalIntSampler(
+        config["merch_len_noiser"]["low"], config["merch_len_noiser"]["high"]
+    )
+    route_len_sampler_noise = NormalIntSampler(
+        config["route_len_sampler_noise"]["low"],
+        config["route_len_sampler_noise"]["high"],
+    )
 
     merch_uni_dist = get_uni_dist_cat(merch_items)
     city_uni_dist = get_uni_dist_cat(cities)
 
-    merch_len_sampler = UniformIntSampler(3, 5)
-    merch_sampler_map = {
-        merch_name: UniformIntSampler(50, 100) for merch_name in merch_items
-    }
-    route_len_sampler = UniformIntSampler(3, 5)
     generator = RouteGenerator(
         city_uni_dist,
         merch_uni_dist,
@@ -310,23 +342,12 @@ if __name__ == "__main__":
         merch_sampler_map,
         route_len_sampler,
     )
-    planned_routes = [generator.gen_route() for _ in range(N_PLANNED_ROUTES)]
-
-    # Options for planned routes
-    N_ACTUAL_ROUTES = 4
-
-    # How much each merch quantity will be noised
-    merch_item_noise_map = {
-        merch_name: NormalIntSampler(-50, 50) for merch_name in merch_items
-    }
-
-    # How big each trip merch length will be
-    merch_len_noiser = NormalIntSampler(-2, 2)
-    route_len_sampler = NormalIntSampler(-1, 1)
+    planned_routes = [generator.gen_route() for _ in range(n_planned_routes)]
 
     actual_routes = []
     planned_routes_uni_dist = get_uni_dist_cat(planned_routes)
-    for i in range(N_ACTUAL_ROUTES):
+
+    for i in range(n_actual_routes):
         picked_actual_route = sample_item(planned_routes_uni_dist)
         actual_route = noise_route(
             picked_actual_route,
