@@ -2,6 +2,7 @@ import abc
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union
+from uuid import uuid4
 
 import numpy as np  # type: ignore
 from pydantic import BaseModel  # type: ignore
@@ -71,7 +72,7 @@ class Trip(ImmutableModel):
 
 
 class Route(ImmutableModel):
-    _id: int
+    _id: str = uuid4().hex
     route: Tuple[Trip, ...]
 
     def __iter__(self):
@@ -83,7 +84,7 @@ class Route(ImmutableModel):
 
 
 class NoisedRoute(Route):
-    parent_route_id: int
+    original_route_id: str
 
 
 @dataclass
@@ -158,11 +159,11 @@ class RouteGenerator:
 
         return tuple(trips)
 
-    def gen_route(self, _id: int) -> Route:
+    def gen_route(self) -> Route:
         route_len = self.route_len_sampler.gen()
         route = self.gen_trips(route_len)
 
-        return Route(_id=_id, route=route)
+        return Route(route=route)
 
 
 def get_uni_dist_cat(keys: Set[Any]) -> Dict[Any, float]:
@@ -202,7 +203,6 @@ def adjust(dist: Dict[K, float], to_remove: Union[K, Set[K]]) -> Dict[K, float]:
 
 def noise_route(
     route: Route,
-    _id: int,
     data_gen: RouteGenerator,
     route_len_noiser: IntSampler,
     merch_item_noise_map: Dict[str, IntSampler],
@@ -213,7 +213,7 @@ def noise_route(
     new_route_len = len(route) + route_len_noiser.gen()
 
     if new_route_len <= 0:
-        return NoisedRoute(_id=_id, route=[], parent_route_id=route._id)
+        return NoisedRoute(route=[], original_route_id=route._id)
 
     extra_trips = []
 
@@ -282,7 +282,7 @@ def noise_route(
             "Noised trips such that no trips are left, please adjust parameters "
             "so this cannot happen."
         )
-    return NoisedRoute(_id=_id, route=noised_trips, parent_route_id=route._id)
+    return NoisedRoute(route=noised_trips, original_route_id=route._id)
 
 
 # %%
@@ -309,7 +309,7 @@ if __name__ == "__main__":
         merch_sampler_map,
         route_len_sampler,
     )
-    planned_routes = [generator.gen_route(i) for i in range(N_PLANNED_ROUTES)]
+    planned_routes = [generator.gen_route() for _ in range(N_PLANNED_ROUTES)]
 
     # Options for planned routes
     N_ACTUAL_ROUTES = 4
@@ -329,7 +329,6 @@ if __name__ == "__main__":
         picked_actual_route = sample_item(planned_routes_uni_dist)
         actual_route = noise_route(
             picked_actual_route,
-            i,
             generator,
             route_len_sampler,
             merch_item_noise_map,
