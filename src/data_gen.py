@@ -1,11 +1,12 @@
 import abc
+import json
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union
 from uuid import uuid4
 
 import numpy as np  # type: ignore
-from pydantic import BaseModel  # type: ignore
+from pydantic import BaseModel, Field  # type: ignore
 
 K = TypeVar("K")
 
@@ -72,7 +73,7 @@ class Trip(ImmutableModel):
 
 
 class Route(ImmutableModel):
-    _id: str = uuid4().hex
+    uuid: str = Field(default_factory=lambda: uuid4().hex)
     route: Tuple[Trip, ...]
 
     def __iter__(self):
@@ -84,7 +85,7 @@ class Route(ImmutableModel):
 
 
 class NoisedRoute(Route):
-    original_route_id: str
+    original_route_uuid: str
 
 
 @dataclass
@@ -213,7 +214,7 @@ def noise_route(
     new_route_len = len(route) + route_len_noiser.gen()
 
     if new_route_len <= 0:
-        return NoisedRoute(route=[], original_route_id=route._id)
+        return NoisedRoute(route=[], original_route_uuid=route.uuid)
 
     extra_trips = []
 
@@ -282,7 +283,7 @@ def noise_route(
             "Noised trips such that no trips are left, please adjust parameters "
             "so this cannot happen."
         )
-    return NoisedRoute(route=noised_trips, original_route_id=route._id)
+    return NoisedRoute(route=noised_trips, original_route_uuid=route.uuid)
 
 
 # %%
@@ -336,7 +337,10 @@ if __name__ == "__main__":
         )
         actual_routes.append(actual_route)
 
-    print(planned_routes[0])
-    print(actual_routes[0])
+    with open("planned_routes.json", "w", encoding="ascii") as f:
+        f.write(json.dumps([route.dict() for route in planned_routes]))
+    with open("actual_routes.json", "w", encoding="ascii") as f:
+        f.write(json.dumps([route.dict() for route in actual_routes]))
+
     end = time.time()
     print(f"{end - start} seconds elapsed.")
