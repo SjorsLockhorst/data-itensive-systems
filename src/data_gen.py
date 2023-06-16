@@ -1,17 +1,7 @@
 import abc
 import time
 from dataclasses import dataclass
-from typing import (
-    Any,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Set,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union
 
 import numpy as np  # type: ignore
 from pydantic import BaseModel  # type: ignore
@@ -33,24 +23,21 @@ class IntSampler(metaclass=abc.ABCMeta):
         """
         Generate an integer between `lower` and `upper` according to some distribution.
         """
-        ...
 
 
 class UniformIntSampler(IntSampler):
-
     def gen(self) -> int:
         """Generate integer according to uniform distribution."""
         return np.random.randint(self.lower, self.upper)
 
 
 class NormalIntSampler(IntSampler):
-
     def __init__(
-            self,
-            lower: int,
-            upper: int,
-            mean: Optional[float] = None,
-            std: Optional[float] = None
+        self,
+        lower: int,
+        upper: int,
+        mean: Optional[float] = None,
+        std: Optional[float] = None,
     ) -> None:
         super().__init__(lower, upper)
         if not mean:
@@ -59,8 +46,8 @@ class NormalIntSampler(IntSampler):
             self.mean = mean
 
         if not std:
-            self.std = (self.upper - self.lower) / \
-                6  # This std seems to be sensible
+            # This std seems to be sensible
+            self.std = (self.upper - self.lower) / 6
         else:
             self.std = std
 
@@ -101,7 +88,6 @@ class NoisedRoute(Route):
 
 @dataclass
 class RouteGenerator:
-
     # Probability of starting in/moving to a certain city
     city_dist: Dict[str, float]
 
@@ -117,10 +103,7 @@ class RouteGenerator:
     # Range of amount of trips each route will contain
     route_len_sampler: IntSampler
 
-    def gen_city(
-        self,
-        city_prior_dist: Optional[Dict[str, float]] = None
-    ) -> str:
+    def gen_city(self, city_prior_dist: Optional[Dict[str, float]] = None) -> str:
         """Generate a random city according to some distribution."""
         if not city_prior_dist:
             city_prior_dist = self.city_dist
@@ -128,9 +111,7 @@ class RouteGenerator:
         return sample_item(city_prior_dist)
 
     def gen_merch_items(
-            self,
-            merch_len: int,
-            merch_dist: Optional[Dict[str, float]] = None
+        self, merch_len: int, merch_dist: Optional[Dict[str, float]] = None
     ) -> Tuple[MerchItem, ...]:
         """Gen some amount of merch items."""
 
@@ -166,7 +147,6 @@ class RouteGenerator:
         return Trip(from_city=from_city, to_city=to_city, merch=merch)
 
     def gen_trips(self, n: int, unique: bool = False) -> Tuple[Trip, ...]:
-
         # TODO: Optionally make sure no two trips with same start <-> end can exist
         from_city = None
         trips = []
@@ -193,10 +173,7 @@ def get_uni_dist_cat(keys: Set[Any]) -> Dict[Any, float]:
 def sample_items(dist: Dict[K, float], k: int) -> List[K]:
     """Sample keys from a dictionary according to the weights in values."""
     return np.random.choice(
-        list(dist.keys()),
-        size=k,
-        replace=False,
-        p=list(dist.values())
+        list(dist.keys()), size=k, replace=False, p=list(dist.values())
     )
 
 
@@ -205,7 +182,7 @@ def sample_item(dist: Dict[K, float]) -> K:
     return sample_items(dist, 1)[0]
 
 
-def adjust(dist: Dict[K, float], to_remove: Union[K,  Set[K]]) -> Dict[K, float]:
+def adjust(dist: Dict[K, float], to_remove: Union[K, Set[K]]) -> Dict[K, float]:
     """Adjust a given distribution after removing an element."""
     if not isinstance(to_remove, set):
         p_remove = dist[to_remove]
@@ -217,20 +194,19 @@ def adjust(dist: Dict[K, float], to_remove: Union[K,  Set[K]]) -> Dict[K, float]
     new_p = total_p - p_remove
 
     remaining_elements = {
-        k: v * total_p / new_p for k,
-        v in dist.items() if k not in to_remove
+        k: v * total_p / new_p for k, v in dist.items() if k not in to_remove
     }
 
     return remaining_elements
 
 
 def noise_route(
-        route: Route,
-        id: int,
-        data_gen: RouteGenerator,
-        route_len_noiser: IntSampler,
-        merch_item_noise_map: Dict[str, IntSampler],
-        merch_len_noiser: IntSampler
+    route: Route,
+    id: int,
+    data_gen: RouteGenerator,
+    route_len_noiser: IntSampler,
+    merch_item_noise_map: Dict[str, IntSampler],
+    merch_len_noiser: IntSampler,
 ) -> Route:
     # TODO: How do we add / remove routes?
     # TODO: Should we change from / to city with some probability?
@@ -242,8 +218,7 @@ def noise_route(
     extra_trips = []
 
     if new_route_len <= len(route):
-        trips_to_noise = sample_items(
-            get_uni_dist_cat(route.route), new_route_len)
+        trips_to_noise = sample_items(get_uni_dist_cat(route.route), new_route_len)
     else:
         trips_to_noise = list(route.route)
         n_routes_to_gen = new_route_len - len(planned_routes)
@@ -274,12 +249,9 @@ def noise_route(
         # If we have a shorter merch length, sample that amount of items from the merch
         if noised_merch_len < len(trip.merch):
             merch_to_keep_indices = np.random.choice(
-                np.arange(0, len(trip.merch) - 1),
-                size=noised_merch_len,
-                replace=False
+                np.arange(0, len(trip.merch) - 1), size=noised_merch_len, replace=False
             )
-            noised_merch = [noised_merch[idx]
-                            for idx in merch_to_keep_indices]
+            noised_merch = [noised_merch[idx] for idx in merch_to_keep_indices]
 
         # If we have more items, generate some new once, excluding elements currently
         # in merch.
@@ -288,22 +260,18 @@ def noise_route(
             merch_names = {merch_name for merch_name, _ in trip.merch}
             adjusted_dist = adjust(data_gen.merch_dist, merch_names)
             if adjusted_dist:
-
                 # Make sure that we can never sample more items than we have
                 if n_new_merch > len(adjusted_dist):
                     n_new_merch = len(adjusted_dist)
 
-                new_merch = data_gen.gen_merch_items(
-                    n_new_merch, adjusted_dist)
+                new_merch = data_gen.gen_merch_items(n_new_merch, adjusted_dist)
                 noised_merch += list(new_merch)
             else:
                 noised_merch.append(trip.merch)
 
         # Create new trip
         noised_trip = Trip(
-            from_city=trip.from_city,
-            to_city=trip.to_city,
-            merch=tuple(noised_merch)
+            from_city=trip.from_city, to_city=trip.to_city, merch=tuple(noised_merch)
         )
         noised_trips.append(noised_trip)
 
@@ -314,22 +282,16 @@ def noise_route(
             "Noised trips such that no trips are left, please adjust parameters "
             "so this cannot happen."
         )
-    return NoisedRoute(
-        id=id,
-        route=noised_trips,
-        parent_route_id=route.id
-    )
+    return NoisedRoute(id=id, route=noised_trips, parent_route_id=route.id)
 
 
 # %%
 if __name__ == "__main__":
-
     start = time.time()
     # Options for planned routes
     N_PLANNED_ROUTES = 2
 
-    merch_items = {"Apples", "Pears", "Bananas",
-                   "Kiwis", "Oranges", "Mandarins"}
+    merch_items = {"Apples", "Pears", "Bananas", "Kiwis", "Oranges", "Mandarins"}
     cities = {"Amsterdam", "Utrecht", "Delft"}
 
     merch_uni_dist = get_uni_dist_cat(merch_items)
@@ -337,8 +299,7 @@ if __name__ == "__main__":
 
     merch_len_sampler = UniformIntSampler(3, 5)
     merch_sampler_map = {
-        merch_name: UniformIntSampler(50, 100)
-        for merch_name in merch_items
+        merch_name: UniformIntSampler(50, 100) for merch_name in merch_items
     }
     route_len_sampler = UniformIntSampler(3, 5)
     generator = RouteGenerator(
@@ -346,7 +307,7 @@ if __name__ == "__main__":
         merch_uni_dist,
         merch_len_sampler,
         merch_sampler_map,
-        route_len_sampler
+        route_len_sampler,
     )
     planned_routes = [generator.gen_route(i) for i in range(N_PLANNED_ROUTES)]
 
@@ -372,7 +333,7 @@ if __name__ == "__main__":
             generator,
             route_len_sampler,
             merch_item_noise_map,
-            merch_len_noiser
+            merch_len_noiser,
         )
         actual_routes.append(actual_route)
 
