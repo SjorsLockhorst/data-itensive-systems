@@ -71,7 +71,7 @@ class Trip(ImmutableModel):
 
 
 class Route(ImmutableModel):
-    id: int
+    _id: int
     route: Tuple[Trip, ...]
 
     def __iter__(self):
@@ -158,11 +158,11 @@ class RouteGenerator:
 
         return tuple(trips)
 
-    def gen_route(self, id: int) -> Route:
+    def gen_route(self, _id: int) -> Route:
         route_len = self.route_len_sampler.gen()
         route = self.gen_trips(route_len)
 
-        return Route(id=id, route=route)
+        return Route(_id=_id, route=route)
 
 
 def get_uni_dist_cat(keys: Set[Any]) -> Dict[Any, float]:
@@ -202,7 +202,7 @@ def adjust(dist: Dict[K, float], to_remove: Union[K, Set[K]]) -> Dict[K, float]:
 
 def noise_route(
     route: Route,
-    id: int,
+    _id: int,
     data_gen: RouteGenerator,
     route_len_noiser: IntSampler,
     merch_item_noise_map: Dict[str, IntSampler],
@@ -213,7 +213,7 @@ def noise_route(
     new_route_len = len(route) + route_len_noiser.gen()
 
     if new_route_len <= 0:
-        return NoisedRoute(id=id, route=[], parent_route_id=route.id)
+        return NoisedRoute(_id=_id, route=[], parent_route_id=route._id)
 
     extra_trips = []
 
@@ -282,7 +282,7 @@ def noise_route(
             "Noised trips such that no trips are left, please adjust parameters "
             "so this cannot happen."
         )
-    return NoisedRoute(id=id, route=noised_trips, parent_route_id=route.id)
+    return NoisedRoute(_id=_id, route=noised_trips, parent_route_id=route._id)
 
 
 # %%
