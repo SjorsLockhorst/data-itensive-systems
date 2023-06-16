@@ -249,3 +249,7 @@ $RECYCLE.BIN/
 *.lnk
 
 *-env/
+
+# generated routes
+actual_routes.json
+planned_routes.json
