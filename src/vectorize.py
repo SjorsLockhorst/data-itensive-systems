@@ -13,8 +13,12 @@ with open(CONFIG_PATH, encoding="utf-8") as f:
 _merch_items = config["merch_items"]
 _cities = config["cities"]
 
-MERCH_ITEM_MIN: Final = config["merch_sampler_map"]["low"]
-MERCH_ITEM_MAX: Final = config["merch_sampler_map"]["high"]
+MERCH_ITEM_MIN: Final = min(
+    config["merch_sampler_map"]["low"] - config["merch_item_noise_map"]["low"], 0
+)
+MERCH_ITEM_MAX: Final = (
+    config["merch_sampler_map"]["high"] + config["merch_item_noise_map"]["high"]
+)
 
 NORMALIZATION_RECIPROCAL: Final = 1 / (MERCH_ITEM_MAX - MERCH_ITEM_MIN)
 
