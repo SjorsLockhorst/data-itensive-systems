@@ -16,15 +16,15 @@ _cities = config["cities"]
 MERCH_ITEM_MIN: Final = config["merch_sampler_map"]["low"]
 MERCH_ITEM_MAX: Final = config["merch_sampler_map"]["high"]
 
+NORMALIZATION_RECIPROCAL: Final = 1 / (MERCH_ITEM_MAX - MERCH_ITEM_MIN)
+
 _combinations = list(product(_cities, _cities, _merch_items))
-# Make sure from_city and to_city are not the same
 _combinations = [
     (from_city, to_city, merch)
     for from_city, to_city, merch in _combinations
     if from_city != to_city
 ]
 VECTOR_SIZE: Final = len(_combinations)
-# Generate a hashmap from combination to index
 VECTOR_MAP: Final = {
     combination: index for index, combination in enumerate(_combinations)
 }
@@ -35,10 +35,9 @@ def create_vectors(routes):
     vector_elements = []
     for route in routes:
         for merch_name, merch_weight in route.merch.items():
-            # Normalize the weight
-            normalized_weight = (merch_weight - MERCH_ITEM_MIN) / (
-                MERCH_ITEM_MAX - MERCH_ITEM_MIN
-            )
+            normalized_weight = (
+                merch_weight - MERCH_ITEM_MIN
+            ) * NORMALIZATION_RECIPROCAL
             vector_elements.append(
                 (
                     VECTOR_MAP[(route.from_city, route.to_city, merch_name)],
@@ -49,6 +48,5 @@ def create_vectors(routes):
     return Vectors.sparse(VECTOR_SIZE, vector_elements)
 
 
-# Flatten the merchandise column to get product and its weight
 def vectorize_routes(routes_df):
     return routes_df.withColumn("route_vector", create_vectors("route"))
