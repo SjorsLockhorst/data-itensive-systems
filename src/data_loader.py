@@ -39,10 +39,9 @@ def load_json_to_spark(file_name):
     return spark.read.json(file_name, schema=schema)
 
 
-if __name__ == "__main__":
+def load_and_vectorize():
     planned_routes_df = load_json_to_spark("planned_routes.json")
     actual_routes_df = load_json_to_spark("actual_routes.json")
-    df = vectorize_routes(planned_routes_df)
-    df = vectorize_routes(actual_routes_df)
-    df.show()
-    __import__("ipdb").set_trace()
+    planned_df = vectorize_routes(planned_routes_df)
+    actual_df = vectorize_routes(actual_routes_df)
+    return (planned_df, actual_df)
