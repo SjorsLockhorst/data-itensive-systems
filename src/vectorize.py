@@ -36,18 +36,18 @@ VECTOR_MAP: Final = {
 
 @udf(VectorUDT())
 def create_vectors(routes):
-    vector_elements = []
+    vector_elements = {}
+
     for route in routes:
         for merch_name, merch_weight in route.merch.items():
             normalized_weight = (
                 merch_weight - MERCH_ITEM_MIN
             ) * NORMALIZATION_RECIPROCAL
-            vector_elements.append(
-                (
-                    VECTOR_MAP[(route.from_city, route.to_city, merch_name)],
-                    normalized_weight,
-                )
-            )
+            vector_index = VECTOR_MAP[(route.from_city, route.to_city, merch_name)]
+            if vector_index in vector_elements:
+                vector_elements[vector_index] += normalized_weight
+            else:
+                vector_elements[vector_index] = normalized_weight
 
     return Vectors.sparse(VECTOR_SIZE, vector_elements)
 
