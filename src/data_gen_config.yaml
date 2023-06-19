@@ -1,5 +1,5 @@
-n_planned_routes: 200
-n_actual_routes: 2000
+n_planned_routes: 100
+n_actual_routes: 10000
 
 merch_items:
   - Apple
