@@ -8,7 +8,7 @@ planned = planned.drop("route")
 actual = actual.drop("route")
 
 brp = BucketedRandomProjectionLSH(
-    inputCol="route_vector", outputCol="hashes", bucketLength=3, numHashTables=1
+    inputCol="route_vector", outputCol="hashes", bucketLength=100, numHashTables=1
 )
 
 model = brp.fit(planned)
