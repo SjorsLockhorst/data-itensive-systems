@@ -30,6 +30,7 @@ schema = StructType(
             nullable=True,
         ),
         StructField("uuid", StringType(), nullable=True),
+        StructField("original_route_uuid", StringType(), nullable=True),
     ]
 )
 
@@ -42,4 +43,6 @@ if __name__ == "__main__":
     planned_routes_df = load_json_to_spark("planned_routes.json")
     actual_routes_df = load_json_to_spark("actual_routes.json")
     df = vectorize_routes(planned_routes_df)
+    df = vectorize_routes(actual_routes_df)
     df.show()
+    __import__("ipdb").set_trace()
