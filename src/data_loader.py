@@ -10,7 +10,10 @@ from pyspark.sql.types import (
 
 from vectorize import vectorize_routes
 
-spark = SparkSession.builder.appName("Pay Routes").getOrCreate()
+spark = SparkSession.builder\
+        .appName("Pay Routes")\
+        .config("spark.driver.memory", "5G")\
+        .getOrCreate()
 
 schema = StructType(
     [

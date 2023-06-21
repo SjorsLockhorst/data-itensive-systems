@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, Final, List, Mapping, Optional, Set, Tuple, TypeVar, Union
 from uuid import uuid4
+from tqdm import tqdm
 
 import numpy as np  # type: ignore
 import yaml
@@ -214,13 +215,14 @@ def noise_route(
     # TODO: Should we change from / to city with some probability?
     new_route_len = len(route) + route_len_noiser.gen()
 
+    extra_trips = []
+
     if new_route_len <= 0:
         return NoisedRoute(route=[], original_route_uuid=route.uuid)
 
-    extra_trips = []
-
-    if new_route_len <= len(route):
-        trips_to_noise = sample_items(get_uni_dist_cat(route.route), new_route_len)
+    elif new_route_len <= len(route):
+        trips_to_noise = np.random.choice(
+                list(route.route), size=new_route_len, replace=False)
     else:
         trips_to_noise = list(route.route)
         n_routes_to_gen = new_route_len - len(planned_routes)
@@ -322,7 +324,7 @@ if __name__ == "__main__":
     merch_len_noiser = NormalIntSampler(
         config["merch_len_noiser"]["low"], config["merch_len_noiser"]["high"]
     )
-    route_len_sampler_noise = NormalIntSampler(
+    route_len_noiser = NormalIntSampler(
         config["route_len_sampler_noise"]["low"],
         config["route_len_sampler_noise"]["high"],
     )
@@ -337,15 +339,17 @@ if __name__ == "__main__":
         merch_sampler_map,
         route_len_sampler,
     )
-    planned_routes = [generator.gen_route() for _ in range(n_planned_routes)]
+    print("Generating planned routes...")
+    planned_routes = [generator.gen_route() for _ in tqdm(range(n_planned_routes))]
     actual_routes = []
 
-    for i in range(n_actual_routes):
+    print("Generating actual routes...")
+    for i in tqdm(range(n_actual_routes)):
         picked_actual_route = np.random.choice(planned_routes)
         actual_route = noise_route(
             picked_actual_route,
             generator,
-            route_len_sampler,
+            route_len_noiser,
             merch_item_noise_map,
             merch_len_noiser,
         )

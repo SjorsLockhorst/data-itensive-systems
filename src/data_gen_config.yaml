@@ -10,6 +10,39 @@ merch_items:
   - Mandarin
   - Strawberry
   - Mango
+  - Pineapple
+  - Watermelon
+  - Grapefruit
+  - Lemon
+  - Lime
+  - Raspberry
+  - Blueberry
+  - Cherry
+  - Peach
+  - Plum
+  - Avocado
+  - Coconut
+  - Papaya
+  - Pomegranate
+  - Fig
+  - Blackberry
+  - Cranberry
+  - Guava
+  - Passion fruit
+  - Dragon fruit
+  - Lychee
+  - Apricot
+  - Raspberry Pi
+  - Coffee mug
+  - T-shirt
+  - Hoodie
+  - Phone case
+  - Keychain
+  - Poster
+  - Sticker pack
+  - Backpack
+  - Notebook
+  - Tote bag
 
 cities:
   - Amsterdam
@@ -20,27 +53,67 @@ cities:
   - Eindhoven
   - Groningen
   - Tilburg
+  - Alkmaar
+  - Breda
+  - Maastricht
+  - Nijmegen
+  - Haarlem
+  - Leiden
+  - Zwolle
+  - Arnhem
+  - Dordrecht
+  - Amersfoort
+  - Den Bosch
+  - Enschede
+  - Apeldoorn
+  - Leeuwarden
+  - Almere
+  - Deventer
+  - Gouda
+  - Zaanstad
+  - Hoorn
+  - Middelburg
+  - Vlissingen
+  - Roermond
+  - Venlo
+  - Heerlen
+  - Emmen
+  - Amstelveen
+  - Alphen aan den Rijn
+  - Hengelo
+  - Purmerend
+  - Helmond
+  - Schiedam
+  - Sittard
+  - Den Helder
+  - Lelystad
+  - Spijkenisse
+  - Zaandam
+  - Oss
+  - Harderwijk
+  - Hoofddorp
+  - Vlaardingen
 
 merch_len_sampler:
-  low: 3
-  high: 5
+  low: 10
+  high: 25
 
 merch_sampler_map:
   low: 50
   high: 100
 
 route_len_sampler:
-  low: 3
-  high: 5
+  low: 7
+  high: 10
 
 merch_item_noise_map:
-  low: -50
-  high: 50
+  low: -45
+  high: 45
 
 merch_len_noiser:
-  low: -2
-  high: 2
+  low: -5
+  high: 5
 
 route_len_sampler_noise:
-  low: -1
-  high: 1
+  low: -5
+  high: 5
