@@ -1,5 +1,5 @@
-n_planned_routes: 300
-n_actual_routes: 30000
+n_planned_routes: 10
+n_actual_routes: 1000
 
 merch_items:
   - Apple
@@ -95,25 +95,25 @@ cities:
   - Vlaardingen
 
 merch_len_sampler:
-  low: 10
-  high: 40
+  low: 4
+  high: 10
 
 merch_sampler_map:
   low: 50
   high: 100
 
 route_len_sampler:
-  low: 10
-  high: 20
+  low: 3
+  high: 10
 
 merch_item_noise_map:
-  low: -45
-  high: 45
+  low: -1
+  high: 1
 
 merch_len_noiser:
-  low: -6
-  high: 6
+  low: -1
+  high: 1
 
 route_len_sampler_noise:
-  low: -6
-  high: 6
+  low: -1
+  high: 1

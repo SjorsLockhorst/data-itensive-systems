@@ -12,7 +12,7 @@ from vectorize import vectorize_routes
 
 spark = SparkSession.builder\
         .appName("Pay Routes")\
-        .config("spark.driver.memory", "5G")\
+        .config("spark.driver.memory", "10G")\
         .getOrCreate()
 
 schema = StructType(
