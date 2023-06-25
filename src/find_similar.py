@@ -15,7 +15,7 @@ actual = actual.drop("route").cache()
 
 fit_start = time()
 brp = BucketedRandomProjectionLSH(
-    inputCol="route_vector", outputCol="hashes", numHashTables=10, bucketLength=100
+    inputCol="route_vector", outputCol="hashes", numHashTables=2, bucketLength=10
 )
 model = brp.fit(planned)
 print(f"Fitting LSH took {time() - fit_start}")
@@ -31,7 +31,7 @@ compare_start = time()
 result = model.approxSimilarityJoin(
     transformed_actual_df,
     transformed_planned_df,
-    threshold=6,
+    threshold=10,
     distCol="EuclideanDistance",
 ).cache()
 print(f"Did {result.count()} comparisons")
@@ -59,9 +59,11 @@ count = final_joined_result.filter(
 ).count()
 average_dist = final_joined_result.agg(F.mean(F.col("EuclideanDistance"))).collect()[0][0]
 std_dist = final_joined_result.agg(F.stddev(F.col("EuclideanDistance"))).collect()[0][0]
+max_dist = final_joined_result.agg(F.max(F.col("EuclideanDistance"))).collect()[0][0]
+min_dist = final_joined_result.agg(F.min(F.col("EuclideanDistance"))).collect()[0][0]
 
 print(f"Number of rows where 'original_route_uuid' equals to 'uuid': {count}")
 print(f"Accuracy: {count / actual.count()}")
-print(f"EuclideanDistance: M={average_dist:.2f}; SD={std_dist:.2f}")
+print(f"EuclideanDistance: M={average_dist:.2f}; SD={std_dist:.2f}, min={min_dist}, max={max_dist}")
 print(f"{time() - global_start}s elapsed in total.")
 

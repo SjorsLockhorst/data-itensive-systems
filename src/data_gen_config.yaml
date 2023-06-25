@@ -1,5 +1,5 @@
-n_planned_routes: 100
-n_actual_routes: 10000
+n_planned_routes: 300
+n_actual_routes: 30000
 
 merch_items:
   - Apple
@@ -96,24 +96,24 @@ cities:
 
 merch_len_sampler:
   low: 10
-  high: 25
+  high: 40
 
 merch_sampler_map:
   low: 50
   high: 100
 
 route_len_sampler:
-  low: 7
-  high: 10
+  low: 10
+  high: 20
 
 merch_item_noise_map:
   low: -45
   high: 45
 
 merch_len_noiser:
-  low: -5
-  high: 5
+  low: -6
+  high: 6
 
 route_len_sampler_noise:
-  low: -5
-  high: 5
+  low: -6
+  high: 6
