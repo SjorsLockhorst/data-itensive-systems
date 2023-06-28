@@ -15,6 +15,7 @@ spark = (
     .config("spark.driver.memory", "10G")
     .getOrCreate()
 )
+spark.sparkContext.setLogLevel("ERROR")
 
 schema = StructType(
     [
