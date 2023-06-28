@@ -1,5 +1,6 @@
 import math
 from time import perf_counter as time
+from typing import Final
 
 from pyspark.ml.feature import BucketedRandomProjectionLSH
 from pyspark.sql import functions as F
@@ -8,42 +9,48 @@ from cost import calc_payment
 from data_loader import load_and_vectorize
 
 
-def run(idx=0):
+EUCLIDIAN_THRESHOLD: Final = 14
+NORMALISATION_RECIPROCAL: Final = 1 / EUCLIDIAN_THRESHOLD
+
+
+def run(idx):
     global_start = time()
 
     vec_start = time()
     planned, actual = load_and_vectorize(idx=idx)
-
     print(f"Loading and vectorising took {time() - vec_start}s.")
+
     planned_vecs = planned.drop("route").cache()
     actual_vecs = actual.drop("route").cache()
 
-    fit_start = time()
+    similar_df = find_similar(planned_vecs, actual_vecs)
+    evaluate_accuracy(similar_df, actual_vecs)
+
+    print(f"{time() - global_start}s elapsed in total.")
+
+
+def find_similar(planned, actual):
     brp = BucketedRandomProjectionLSH(
         inputCol="route_vector", outputCol="hashes", numHashTables=2, bucketLength=100
     )
-    model = brp.fit(planned_vecs)
-    print(f"Fitting LSH took {time() - fit_start}")
+    fit_start = time()
+    model = brp.fit(planned)
+    print(f"Fitting LSH took {time() - fit_start}s")
 
     transform_start = time()
-
-    transformed_planned_df = model.transform(planned_vecs)
-    transformed_actual_df = model.transform(actual_vecs)
-    # print(transformed_planned_df.head().hashes[0])
-    print(f"Transforming data took {time() - transform_start}")
+    transformed_planned_df = model.transform(planned)
+    transformed_actual_df = model.transform(actual)
+    print(f"Transforming data took {time() - transform_start}s")
 
     compare_start = time()
-
-    threshold = 14
-
     result = model.approxSimilarityJoin(
         transformed_actual_df,
         transformed_planned_df,
-        threshold=threshold,
+        threshold=EUCLIDIAN_THRESHOLD,
         distCol="EuclideanDistance",
     ).cache()
     print(f"Did {result.count()} comparisons")
-    print(f"Comparing data {time() - compare_start}")
+    print(f"Comparing data {time() - compare_start}s")
 
     # Get the nearest neighbor from the transformed_planned_df
     min_start = time()
@@ -52,27 +59,29 @@ def run(idx=0):
         .agg(F.min("EuclideanDistance").alias("EuclideanDistance"))
         .cache()
     )
-    print(f"Found minima in {time() - min_start}s")
+    print(f"Found distance minima in {time() - min_start}s")
 
     join_start = time()
-
     # Join back to get the full row information from planned_df
-    final_results = nearest_neighbors.join(
+    similar_df = nearest_neighbors.join(
         result, ["datasetA", "EuclideanDistance"]
     ).cache()
-    print(f"Joined in {time() - join_start}s")
+    print(f"Joined back based on distance minima {time() - join_start}s")
+    return similar_df
 
-    # Evaluate the accuracy
-    count = final_results.filter(
-        final_results.datasetA.original_route_uuid == final_results.datasetB.uuid
+
+def evaluate_accuracy(similar_df, actual_df):
+    count = similar_df.filter(
+        similar_df.datasetA.original_route_uuid == similar_df.datasetB.uuid
     ).count()
 
     print(f"Number of rows where 'original_route_uuid' equals to 'uuid': {count}")
-    print(f"Accuracy: {count / actual_vecs.count()}")
+    print(f"Accuracy: {count / actual_df.count()}")
 
-    print(final_results.count())
+
+def calculate_payment(similar_df, actual, planned, planned_vecs):
     joined_preds = (
-        final_results.select(
+        similar_df.select(
             [
                 F.col("datasetA.uuid").alias("actual_uuid"),
                 F.col("datasetB.uuid").alias("pred_planned_uuid"),
@@ -107,17 +116,15 @@ def run(idx=0):
 
     euclid_cost_start = time()
 
-    max_dist = joined_preds.agg(F.max(F.col("EuclideanDistance"))).collect()[0][0]
+    #  max_dist = joined_preds.agg(F.max(F.col("EuclideanDistance"))).collect()[0][0]
     min_dist = joined_preds.agg(F.min(F.col("EuclideanDistance"))).collect()[0][0]
 
-    max_dist = math.sqrt(planned_vecs.head()["route_vector"].size)
-
-    NORMALISATION_RECIPROCAL = 1 / threshold
+    #  max_dist = math.sqrt(planned_vecs.head()["route_vector"].size)
 
     joined_preds = joined_preds.withColumn(
         "NormEuclideanDistance",
         (F.col("EuclideanDistance") - min_dist)
-        * NORMALISATION_RECIPROCAL,  #  * (lower + (upper - lower))
+        * NORMALISATION_RECIPROCAL,  # * (lower + (upper - lower))
     )
     joined_preds = joined_preds.withColumn(
         "Similarity", 1 - F.col("NormEuclideanDistance")
@@ -136,8 +143,6 @@ def run(idx=0):
     print(preds_with_payment.select(["EuclidPayment", "Payment"]).summary().show())
     print(preds_with_payment.describe().show())
     print(preds_with_payment.stat.corr("Payment", "EuclidPayment"))
-
-    print(f"{time() - global_start}s elapsed in total.")
 
 
 if __name__ == "__main__":
