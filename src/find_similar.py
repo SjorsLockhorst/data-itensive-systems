@@ -20,8 +20,8 @@ def run(idx):
     planned, actual = load_and_vectorize(idx=idx)
     print(f"Loading and vectorising took {time() - vec_start:.4f}s.\n")
 
-    planned_vecs = planned.drop("route").cache()
-    actual_vecs = actual.drop("route").cache()
+    planned_vecs = planned.drop("route")
+    actual_vecs = actual.drop("route")
 
     similar_start = time()
     similar_df = find_similar(planned_vecs, actual_vecs)
@@ -51,24 +51,20 @@ def find_similar(planned, actual):
         transformed_planned_df,
         threshold=EUCLIDIAN_THRESHOLD,
         distCol="EuclideanDistance",
-    ).cache()
-    print(f"Did {result.count()} comparisons")
+    )
+    #  print(f"Did {result.count()} comparisons")
     print(f"Comparing data {time() - compare_start:.4f}s")
 
     # Get the nearest neighbor from the transformed_planned_df
     min_start = time()
-    nearest_neighbors = (
-        result.groupBy("datasetA")
-        .agg(F.min("EuclideanDistance").alias("EuclideanDistance"))
-        .cache()
+    nearest_neighbors = result.groupBy("datasetA").agg(
+        F.min("EuclideanDistance").alias("EuclideanDistance")
     )
     print(f"Found distance minima in {time() - min_start:.4f}s")
 
     join_start = time()
     # Join back to get the full row information from planned_df
-    similar_df = nearest_neighbors.join(
-        result, ["datasetA", "EuclideanDistance"]
-    ).cache()
+    similar_df = nearest_neighbors.join(result, ["datasetA", "EuclideanDistance"])
     print(f"Joined back based on distance minima {time() - join_start:.4f}s")
     return similar_df
 
@@ -112,7 +108,6 @@ def calculate_payment(similar_df, actual, planned):
             ),
             "pred_planned_uuid",
         )
-        .cache()
     )
 
     print("Calculating cost function based on norm. euclidean distance")
@@ -133,16 +128,14 @@ def calculate_payment(similar_df, actual, planned):
         "Similarity", 1 - F.col("NormEuclideanDistance")
     )
 
-    joined_preds = joined_preds.withColumn(
-        "EuclidPayment", F.col("Similarity") * 1000
-    ).cache()
+    joined_preds = joined_preds.withColumn("EuclidPayment", F.col("Similarity") * 1000)
 
     print(f"Found cost based on euclidian similiarity in {time() - euclid_cost_start}s")
 
     print("Arrived at payment")
     preds_with_payment = joined_preds.withColumn(
         "Payment", calc_payment("planned_route", "actual_route")
-    ).cache()
+    )
     print(preds_with_payment.select(["EuclidPayment", "Payment"]).summary().show())
     print(preds_with_payment.describe().show())
     print(preds_with_payment.stat.corr("Payment", "EuclidPayment"))
