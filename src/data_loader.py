@@ -42,9 +42,9 @@ def load_json_to_spark(file_name):
     return spark.read.json(file_name, schema=schema)
 
 
-def load_and_vectorize():
-    planned_routes_df = load_json_to_spark("planned_routes.json")
-    actual_routes_df = load_json_to_spark("actual_routes.json")
+def load_and_vectorize(idx=0):
+    planned_routes_df = load_json_to_spark(f"planned_routes_{idx}.json")
+    actual_routes_df = load_json_to_spark(f"actual_routes_{idx}.json")
     planned_df = vectorize_routes(planned_routes_df)
     actual_df = vectorize_routes(actual_routes_df)
     return (planned_df, actual_df)
