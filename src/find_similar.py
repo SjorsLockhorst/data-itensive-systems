@@ -3,6 +3,8 @@ import math
 
 from pyspark.ml.feature import BucketedRandomProjectionLSH
 from pyspark.sql import functions as F
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from data_loader import load_and_vectorize
 from cost import calc_payment
@@ -31,7 +33,9 @@ transformed_actual_df = model.transform(actual_vecs)
 print(f"Transforming data took {time() - transform_start}")
 
 compare_start = time()
-threshold = 20
+
+threshold = 14
+
 result = model.approxSimilarityJoin(
     transformed_actual_df,
     transformed_planned_df,
@@ -129,11 +133,20 @@ print(
 print("Arrived at payment")
 preds_with_payment = joined_preds.withColumn(
     "Payment", calc_payment("planned_route", "actual_route")).cache()
-# print(preds_with_payment.select(["EuclidPayment", "Payment"]).summary().show())
+print(preds_with_payment.select(["EuclidPayment", "Payment"]).summary().show())
 print(preds_with_payment.describe().show())
 print(preds_with_payment.stat.corr("Payment", "EuclidPayment"))
 print(preds_with_payment.select(["Payment", "EuclidPayment"]).head(10))
-# print(preds_with_payment.head(10))
 
 
 print(f"{time() - global_start}s elapsed in total.")
+
+pandas_df = preds_with_payment.select(["Payment", "EuclidPayment"]).toPandas()
+
+sns.histplot(data=pandas_df, x='EuclidPayment', color='red', alpha=0.5, label='EuclidPayment')
+sns.histplot(data=pandas_df, x='Payment', color='blue', alpha=0.5, label='Payment')
+plt.xlabel('Value')
+plt.ylabel('Frequency')
+plt.title('Histogram of EuclidPayment and Payment')
+plt.legend()
+plt.show()
