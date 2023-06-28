@@ -1,5 +1,5 @@
 import math
-from time import time
+from time import perf_counter as time
 
 from pyspark.ml.feature import BucketedRandomProjectionLSH
 from pyspark.sql import functions as F
@@ -58,7 +58,7 @@ def run(idx=0):
 
     # Join back to get the full row information from planned_df
     final_results = nearest_neighbors.join(
-        F.broadcast(result), ["datasetA", "EuclideanDistance"]
+        result, ["datasetA", "EuclideanDistance"]
     ).cache()
     print(f"Joined in {time() - join_start}s")
 
