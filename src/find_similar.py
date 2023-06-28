@@ -18,15 +18,18 @@ def run(idx):
 
     vec_start = time()
     planned, actual = load_and_vectorize(idx=idx)
-    print(f"Loading and vectorising took {time() - vec_start}s.")
+    print(f"Loading and vectorising took {time() - vec_start:.4f}s.\n")
 
     planned_vecs = planned.drop("route").cache()
     actual_vecs = actual.drop("route").cache()
 
+    similar_start = time()
     similar_df = find_similar(planned_vecs, actual_vecs)
+    print(f"Finding similar routes in total took {time() - similar_start:.4f}s.\n")
+
     evaluate_accuracy(similar_df, actual_vecs)
 
-    print(f"{time() - global_start}s elapsed in total.")
+    print(f"{time() - global_start:.4f}s elapsed in total.")
 
 
 def find_similar(planned, actual):
@@ -35,12 +38,12 @@ def find_similar(planned, actual):
     )
     fit_start = time()
     model = brp.fit(planned)
-    print(f"Fitting LSH took {time() - fit_start}s")
+    print(f"Fitting LSH took {time() - fit_start:.4f}s")
 
     transform_start = time()
     transformed_planned_df = model.transform(planned)
     transformed_actual_df = model.transform(actual)
-    print(f"Transforming data took {time() - transform_start}s")
+    print(f"Transforming data took {time() - transform_start:.4f}s")
 
     compare_start = time()
     result = model.approxSimilarityJoin(
@@ -50,7 +53,7 @@ def find_similar(planned, actual):
         distCol="EuclideanDistance",
     ).cache()
     print(f"Did {result.count()} comparisons")
-    print(f"Comparing data {time() - compare_start}s")
+    print(f"Comparing data {time() - compare_start:.4f}s")
 
     # Get the nearest neighbor from the transformed_planned_df
     min_start = time()
@@ -59,14 +62,14 @@ def find_similar(planned, actual):
         .agg(F.min("EuclideanDistance").alias("EuclideanDistance"))
         .cache()
     )
-    print(f"Found distance minima in {time() - min_start}s")
+    print(f"Found distance minima in {time() - min_start:.4f}s")
 
     join_start = time()
     # Join back to get the full row information from planned_df
     similar_df = nearest_neighbors.join(
         result, ["datasetA", "EuclideanDistance"]
     ).cache()
-    print(f"Joined back based on distance minima {time() - join_start}s")
+    print(f"Joined back based on distance minima {time() - join_start:.4f}s")
     return similar_df
 
 
@@ -76,10 +79,10 @@ def evaluate_accuracy(similar_df, actual_df):
     ).count()
 
     print(f"Number of rows where 'original_route_uuid' equals to 'uuid': {count}")
-    print(f"Accuracy: {count / actual_df.count()}")
+    print(f"Accuracy: {count / actual_df.count() * 100:.2f}%")
 
 
-def calculate_payment(similar_df, actual, planned, planned_vecs):
+def calculate_payment(similar_df, actual, planned):
     joined_preds = (
         similar_df.select(
             [
