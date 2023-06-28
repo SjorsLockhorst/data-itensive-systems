@@ -13,6 +13,8 @@ if __name__ == "__main__":
         experiment_conf = yaml.safe_load(f)
 
     for idx, config_path in enumerate(experiment_conf["runs"]):
-        if not os.path.exists(f"planned_routes_{idx}.json") or not os.path.exists(f"actual_routes_{idx}.json"):
+        if not os.path.exists(f"planned_routes_{idx}.json") or not os.path.exists(
+            f"actual_routes_{idx}.json"
+        ):
             generate_dataset(config_path, idx=idx)
         run(idx)

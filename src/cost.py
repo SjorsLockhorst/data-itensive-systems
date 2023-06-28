@@ -1,9 +1,9 @@
-from pyspark.sql.types import FloatType
 from pyspark.sql.functions import udf
-
+from pyspark.sql.types import FloatType
 
 TOTAL_COST = 1000
 WEIGHT = 0.2
+
 
 @udf(FloatType())
 def calc_payment(planned, actual):
@@ -29,18 +29,21 @@ def calc_payment(planned, actual):
             quantity_to_move += sum(merchandise.values())
         else:
             for item, expected_quantity in merchandise.items():
-                expected_quantities[to_city][item] = expected_quantities[to_city].get(
-                    item, 0) + expected_quantity
+                expected_quantities[to_city][item] = (
+                    expected_quantities[to_city].get(item, 0) + expected_quantity
+                )
                 quantity_to_move += expected_quantity
 
         if from_city not in expected_quantities:
-            expected_quantities[from_city] = {item: -amount for item, amount in merchandise.copy().items()}
+            expected_quantities[from_city] = {
+                item: -amount for item, amount in merchandise.copy().items()
+            }
 
             for item, expected_quantity in merchandise.items():
-                expected_quantities[to_city][item] = expected_quantities[to_city].get(
-                    item, 0) - expected_quantity
+                expected_quantities[to_city][item] = (
+                    expected_quantities[to_city].get(item, 0) - expected_quantity
+                )
 
-                
     # Calculate cost per unit, since we find both when an item was moved from and to a
     # city, half the quantity. A weight can be added to scale payments up or down
     cost_per_unit = 1000 / quantity_to_move * 0.5 * WEIGHT
@@ -55,15 +58,19 @@ def calc_payment(planned, actual):
             actual_quantities[to_city] = merchandise.copy()
         else:
             for item, actual_quantity in merchandise.items():
-                actual_quantities[to_city][item] = actual_quantities[to_city].get(
-                    item, 0) + actual_quantity
+                actual_quantities[to_city][item] = (
+                    actual_quantities[to_city].get(item, 0) + actual_quantity
+                )
 
         if from_city not in actual_quantities:
-            actual_quantities[from_city] = {item: -amount for item, amount in merchandise.copy().items()}
+            actual_quantities[from_city] = {
+                item: -amount for item, amount in merchandise.copy().items()
+            }
 
             for item, actual_quantity in merchandise.items():
-                actual_quantities[to_city][item] = actual_quantities[to_city].get(
-                    item, 0) - actual_quantity
+                actual_quantities[to_city][item] = (
+                    actual_quantities[to_city].get(item, 0) - actual_quantity
+                )
 
     total_missed_quantity = 0
 
@@ -79,7 +86,9 @@ def calc_payment(planned, actual):
                     total_missed_quantity += expected_quantity
 
         else:
-            total_missed_quantity += sum(abs(val) for val in actual_quantities[city].values()) 
+            total_missed_quantity += sum(
+                abs(val) for val in actual_quantities[city].values()
+            )
 
     payment = TOTAL_COST - total_missed_quantity * cost_per_unit
 
