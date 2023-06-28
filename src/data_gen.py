@@ -9,6 +9,7 @@ from uuid import uuid4
 import numpy as np  # type: ignore
 import yaml
 from pydantic import BaseModel, Field  # type: ignore
+from tqdm import tqdm
 
 DIR_PATH: Final = os.path.dirname(os.path.realpath(__file__))
 CONFIG_PATH: Final = os.path.join(DIR_PATH, "data_gen_config.yaml")
@@ -214,16 +215,18 @@ def noise_route(
     # TODO: Should we change from / to city with some probability?
     new_route_len = len(route) + route_len_noiser.gen()
 
+    extra_trips = []
+
     if new_route_len <= 0:
         return NoisedRoute(route=[], original_route_uuid=route.uuid)
 
-    extra_trips = []
-
-    if new_route_len <= len(route):
-        trips_to_noise = sample_items(get_uni_dist_cat(route.route), new_route_len)
+    elif new_route_len <= len(route):
+        trips_to_noise = np.random.choice(
+            list(route.route), size=new_route_len, replace=False
+        )
     else:
         trips_to_noise = list(route.route)
-        n_routes_to_gen = new_route_len - len(planned_routes)
+        n_routes_to_gen = new_route_len - len(trips_to_noise)
         prev_trip_city = trips_to_noise[-1].from_city
         for i in range(n_routes_to_gen):
             trip = data_gen.gen_trip(prev_trip_city)
@@ -287,10 +290,24 @@ def noise_route(
     return NoisedRoute(route=noised_trips, original_route_uuid=route.uuid)
 
 
-if __name__ == "__main__":
+def get_sampler_from_config(sampling_config: Dict[str, Any]) -> IntSampler:
+    low_high = sampling_config["low"], sampling_config["high"]
+    how = sampling_config["how"]
+    if how == "uniform":
+        sampler = UniformIntSampler
+    elif how == "normal":
+        sampler = NormalIntSampler
+    else:
+        raise Exception("No such sampler!")
+
+    return sampler(*low_high)
+
+
+def generate_dataset(config_path, idx=0):
     start = time.time()
+
     # Options for planned routes
-    with open(CONFIG_PATH, encoding="utf-8") as f:
+    with open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     n_planned_routes = config["n_planned_routes"]
@@ -299,36 +316,15 @@ if __name__ == "__main__":
     merch_items = config["merch_items"]
     cities = config["cities"]
 
-    merch_len_sampler = UniformIntSampler(
-        config["merch_len_sampler"]["low"], config["merch_len_sampler"]["high"]
-    )
-    merch_sampler_map = {
-        merch_name: UniformIntSampler(
-            config["merch_sampler_map"]["low"], config["merch_sampler_map"]["high"]
-        )
-        for merch_name in merch_items
-    }
-    route_len_sampler = UniformIntSampler(
-        config["route_len_sampler"]["low"], config["route_len_sampler"]["high"]
-    )
-
-    merch_item_noise_map = {
-        merch_name: NormalIntSampler(
-            config["merch_item_noise_map"]["low"],
-            config["merch_item_noise_map"]["high"],
-        )
-        for merch_name in merch_items
-    }
-    merch_len_noiser = NormalIntSampler(
-        config["merch_len_noiser"]["low"], config["merch_len_noiser"]["high"]
-    )
-    route_len_sampler_noise = NormalIntSampler(
-        config["route_len_sampler_noise"]["low"],
-        config["route_len_sampler_noise"]["high"],
-    )
-
-    merch_uni_dist = get_uni_dist_cat(merch_items)
     city_uni_dist = get_uni_dist_cat(cities)
+    merch_uni_dist = get_uni_dist_cat(merch_items)
+
+    merch_len_sampler = get_sampler_from_config(config["merch_len_sampler"])
+    merch_sampler_map = {
+        merch_name: get_sampler_from_config(config["merch_sampler_map"])
+        for merch_name in merch_items
+    }
+    route_len_sampler = get_sampler_from_config(config["route_len_sampler"])
 
     generator = RouteGenerator(
         city_uni_dist,
@@ -337,24 +333,39 @@ if __name__ == "__main__":
         merch_sampler_map,
         route_len_sampler,
     )
-    planned_routes = [generator.gen_route() for _ in range(n_planned_routes)]
+    print("Generating planned routes...")
+    planned_routes = [generator.gen_route() for _ in tqdm(range(n_planned_routes))]
+
+    merch_item_noise_map = {
+        merch_name: get_sampler_from_config(config["merch_item_noise_map"])
+        for merch_name in merch_items
+    }
+    merch_len_noiser = get_sampler_from_config(config["merch_len_noiser"])
+
+    route_len_noiser = get_sampler_from_config(config["route_len_sampler_noise"])
+
     actual_routes = []
 
-    for i in range(n_actual_routes):
+    print("Generating actual routes...")
+    for i in tqdm(range(n_actual_routes)):
         picked_actual_route = np.random.choice(planned_routes)
         actual_route = noise_route(
             picked_actual_route,
             generator,
-            route_len_sampler,
+            route_len_noiser,
             merch_item_noise_map,
             merch_len_noiser,
         )
         actual_routes.append(actual_route)
 
-    with open("planned_routes.json", "w", encoding="utf-8") as f:
+    with open(f"planned_routes_{idx}.json", "w", encoding="utf-8") as f:
         f.write(json.dumps([route.dict() for route in planned_routes]))
-    with open("actual_routes.json", "w", encoding="utf-8") as f:
+    with open(f"actual_routes_{idx}.json", "w", encoding="utf-8") as f:
         f.write(json.dumps([route.dict() for route in actual_routes]))
 
     end = time.time()
     print(f"{end - start} seconds elapsed.")
+
+
+if __name__ == "__main__":
+    generate_dataset(CONFIG_PATH)

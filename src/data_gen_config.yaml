@@ -1,5 +1,5 @@
-n_planned_routes: 100
-n_actual_routes: 10000
+n_planned_routes: 1000
+n_actual_routes: 100000
 
 merch_items:
   - Apple
@@ -10,6 +10,39 @@ merch_items:
   - Mandarin
   - Strawberry
   - Mango
+  - Pineapple
+  - Watermelon
+  - Grapefruit
+  - Lemon
+  - Lime
+  - Raspberry
+  - Blueberry
+  - Cherry
+  - Peach
+  - Plum
+  - Avocado
+  - Coconut
+  - Papaya
+  - Pomegranate
+  - Fig
+  - Blackberry
+  - Cranberry
+  - Guava
+  - Passion fruit
+  - Dragon fruit
+  - Lychee
+  - Apricot
+  - Raspberry Pi
+  - Coffee mug
+  - T-shirt
+  - Hoodie
+  - Phone case
+  - Keychain
+  - Poster
+  - Sticker pack
+  - Backpack
+  - Notebook
+  - Tote bag
 
 cities:
   - Amsterdam
@@ -20,27 +53,73 @@ cities:
   - Eindhoven
   - Groningen
   - Tilburg
+  - Alkmaar
+  - Breda
+  - Maastricht
+  - Nijmegen
+  - Haarlem
+  - Leiden
+  - Zwolle
+  - Arnhem
+  - Dordrecht
+  - Amersfoort
+  - Den Bosch
+  - Enschede
+  - Apeldoorn
+  - Leeuwarden
+  - Almere
+  - Deventer
+  - Gouda
+  - Zaanstad
+  - Hoorn
+  - Middelburg
+  - Vlissingen
+  - Roermond
+  - Venlo
+  - Heerlen
+  - Emmen
+  - Amstelveen
+  - Alphen aan den Rijn
+  - Hengelo
+  - Purmerend
+  - Helmond
+  - Schiedam
+  - Sittard
+  - Den Helder
+  - Lelystad
+  - Spijkenisse
+  - Zaandam
+  - Oss
+  - Harderwijk
+  - Hoofddorp
+  - Vlaardingen
 
 merch_len_sampler:
-  low: 3
-  high: 5
+  how: "uniform"
+  low: 10
+  high: 15
 
 merch_sampler_map:
+  how: "uniform"
   low: 50
   high: 100
 
 route_len_sampler:
-  low: 3
-  high: 5
+  how: "uniform"
+  low: 4
+  high: 15
 
 merch_item_noise_map:
-  low: -50
-  high: 50
+  how: "normal"
+  low: -5
+  high: 5
 
 merch_len_noiser:
-  low: -2
-  high: 2
+  how: "normal"
+  low: -3
+  high: 3
 
 route_len_sampler_noise:
-  low: -1
-  high: 1
+  how: "normal"
+  low: -2
+  high: 2

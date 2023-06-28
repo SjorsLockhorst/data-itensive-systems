@@ -251,5 +251,6 @@ $RECYCLE.BIN/
 *-env/
 
 # generated routes
-actual_routes.json
-planned_routes.json
+*.json
+*.json
+
