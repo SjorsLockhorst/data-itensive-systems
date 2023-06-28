@@ -95,25 +95,25 @@ cities:
   - Vlaardingen
 
 merch_len_sampler:
-  low: 4
-  high: 10
+  low: 10
+  high: 15
 
 merch_sampler_map:
   low: 50
   high: 100
 
 route_len_sampler:
-  low: 3
-  high: 10
+  low: 4
+  high: 15
 
 merch_item_noise_map:
-  low: -1
-  high: 1
+  low: -5
+  high: 5
 
 merch_len_noiser:
-  low: -1
-  high: 1
+  low: -3
+  high: 3
 
 route_len_sampler_noise:
-  low: -1
-  high: 1
+  low: -2
+  high: 2

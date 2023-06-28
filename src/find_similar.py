@@ -3,26 +3,14 @@ import math
 
 from pyspark.ml.feature import BucketedRandomProjectionLSH
 from pyspark.sql import functions as F
-from pyspark.sql.types import FloatType
-from pyspark.sql.functions import udf
 
 from data_loader import load_and_vectorize
+from cost import calc_payment
 
 global_start = time()
 
 vec_start = time()
 planned, actual = load_and_vectorize()
-
-# planned = planned.cache()
-# actual = actual.cache()
-
-# actual = actual.withColumnRenamed("route", "actual_route")
-# planned = planned.drop("original_route_uuid")
-# planned = planned.withColumnsRenamed({"uuid": "original_route_uuid", "route": "planned_route"})
-#
-# joined = actual.join(planned, "original_route_uuid")
-# joined = joined.select(["planned_route", "actual_route"]).cache()
-# print(joined.head())
 
 print(f"Loading and vectorising took {time() - vec_start}s.")
 planned_vecs = planned.drop("route").cache()
@@ -43,10 +31,11 @@ transformed_actual_df = model.transform(actual_vecs)
 print(f"Transforming data took {time() - transform_start}")
 
 compare_start = time()
+threshold = 20
 result = model.approxSimilarityJoin(
     transformed_actual_df,
     transformed_planned_df,
-    threshold=20,
+    threshold=threshold,
     distCol="EuclideanDistance",
 ).cache()
 print(f"Did {result.count()} comparisons")
@@ -77,54 +66,15 @@ count = final_results.filter(
 print(f"Number of rows where 'original_route_uuid' equals to 'uuid': {count}")
 print(f"Accuracy: {count / actual_vecs.count()}")
 
-print("Calculating cost function based on norm. euclidean distance")
-
-
-euclid_cost_start = time()
-
-max_dist = final_results.agg(
-    F.max(F.col("EuclideanDistance"))).collect()[0][0]
-min_dist = final_results.agg(
-    F.min(F.col("EuclideanDistance"))).collect()[0][0]
-
-NORMALISATION_RECIPROCAL = 1 / (max_dist - min_dist)
-
-final_results = final_results\
-    .withColumn(
-        "NormEuclideanDistance",
-        (F.col("EuclideanDistance") - min_dist) * NORMALISATION_RECIPROCAL
-    )
-final_results = final_results\
-    .withColumn(
-        "Similarity",
-        1 - F.col("NormEuclideanDistance")
-    )
-
-final_results = final_results\
-    .withColumn(
-        "EuclidPayment",
-        F.col("Similarity") * 1000
-    ).cache()
-
-print(
-    f"Found cost based on euclidian similiarity in {time() - euclid_cost_start}s")
-
-print(final_results
-      .select(
-          ["EuclideanDistance", "NormEuclideanDistance", "EuclidPayment"]
-      )
-      .describe()
-      .show())
 
 print(final_results.count())
 joined_preds = final_results.select([
     F.col("datasetA.uuid").alias("actual_uuid"),
     F.col("datasetB.uuid").alias("pred_planned_uuid"),
+    F.col("datasetA.route_vector").alias("actual_route_vec"),
+    F.col("datasetB.route_vector").alias("planned_route_vec"),
     F.col("datasetA.original_route_uuid").alias("gold_label_planned_uuid"),
     F.col("EuclideanDistance"),
-    F.col("NormEuclideanDistance"),
-    F.col("Similarity"),
-    F.col("EuclidPayment")
 ])\
     .join(
     actual.select([
@@ -141,84 +91,40 @@ joined_preds = final_results.select([
 )\
     .cache()
 
+print("Calculating cost function based on norm. euclidean distance")
 
-@udf(FloatType())
-def calc_payment(planned, actual):
+euclid_cost_start = time()
 
-    expected_quantities = {}
-    actual_quantities = {}
+max_dist = joined_preds.agg(
+    F.max(F.col("EuclideanDistance"))).collect()[0][0]
+min_dist = joined_preds.agg(
+    F.min(F.col("EuclideanDistance"))).collect()[0][0]
 
-    quantity_to_move = 0
-    # Initialize quantities in warehouses based on expected route
-    for trip in planned:
-        from_city = trip["from_city"]
-        to_city = trip["to_city"]
-        merchandise = trip["merch"]
+max_dist = math.sqrt(planned_vecs.head()["route_vector"].size)
 
-        if to_city not in expected_quantities:
-            expected_quantities[from_city] = merchandise.copy()
-            quantity_to_move += sum(merchandise.values())
-        else:
-            for item, expected_quantity in merchandise.items():
-                expected_quantities[to_city][item] = expected_quantities[to_city].get(
-                    item, 0) + expected_quantity
-                quantity_to_move += expected_quantity
-                
-    cost_per_unit = 1000 / quantity_to_move * 0.1
-    # cost_per_unit = 0.1
+NORMALISATION_RECIPROCAL = 1 / threshold
 
-    # Update quantities in warehouses based on actual route
-    for trip in actual:
-        from_city = trip["from_city"]
-        to_city = trip["to_city"]
-        merchandise = trip["merch"]
+joined_preds = joined_preds\
+    .withColumn(
+        "NormEuclideanDistance",
+        (F.col("EuclideanDistance") - min_dist) * NORMALISATION_RECIPROCAL #  * (lower + (upper - lower))
+    )
+joined_preds = joined_preds\
+    .withColumn(
+        "Similarity",
+        1 - F.col("NormEuclideanDistance")
+    )
 
-        if to_city not in actual_quantities:
-            actual_quantities[to_city] = merchandise.copy()
-        else:
-            for item, expected_quantity in merchandise.items():
-                actual_quantities[to_city][item] = actual_quantities[to_city].get(
-                    item, 0) + expected_quantity
+joined_preds = joined_preds\
+    .withColumn(
+        "EuclidPayment",
+        F.col("Similarity") * 1000
+    ).cache()
 
-    # Calculate the cost function based on differences in quantities
-    payment = 1000
-    total_missed_quantity = 0
-    for city in actual_quantities:
-        if city in expected_quantities:
-            for item, expected_quantity in expected_quantities[city].items():
-                if item in actual_quantities[city]:
-                    actual_quantity = actual_quantities[city][item]
-                    missed_quantity = abs(actual_quantity - expected_quantity)
-                    total_missed_quantity += missed_quantity
-                    payment -=  missed_quantity * cost_per_unit
-                else:
-                    payment -= expected_quantity * cost_per_unit
-                    total_missed_quantity += expected_quantity
-
-        else:
-            payment -= sum(actual_quantities[city].values()) * cost_per_unit
-
-    # deviation = total_missed_quantity / quantity_to_move
-    #
-    # # Define the sigmoid function parameters
-    # a = 10  # Amplification factor
-    # b = 0.5  # Dampening factor
-    #
-    # # Calculate the weight using the sigmoid function
-    # weight = 1 / (1 + math.exp(-a * (deviation - b)))
-    # print(payment)
-    # print(deviation)
-    # print(weight)
-    #
-    # payment *= weight
-    payment = max(payment, 0)
-    # Calculate the payment ensuring it falls between 0 and 1000
-    return payment
+print(
+    f"Found cost based on euclidian similiarity in {time() - euclid_cost_start}s")
 
 
-# PAYMENT_PER_UNIT_DEVIANCE = 0.01
-# udf_payment = udf(lambda x, y: calc_payment(
-#     PAYMENT_PER_UNIT_DEVIANCE, x, y), FloatType())
 
 print("Arrived at payment")
 preds_with_payment = joined_preds.withColumn(
