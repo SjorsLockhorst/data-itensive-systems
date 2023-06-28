@@ -5,11 +5,11 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, Final, List, Mapping, Optional, Set, Tuple, TypeVar, Union
 from uuid import uuid4
-from tqdm import tqdm
 
 import numpy as np  # type: ignore
 import yaml
 from pydantic import BaseModel, Field  # type: ignore
+from tqdm import tqdm
 
 DIR_PATH: Final = os.path.dirname(os.path.realpath(__file__))
 CONFIG_PATH: Final = os.path.join(DIR_PATH, "data_gen_config.yaml")
@@ -222,7 +222,8 @@ def noise_route(
 
     elif new_route_len <= len(route):
         trips_to_noise = np.random.choice(
-                list(route.route), size=new_route_len, replace=False)
+            list(route.route), size=new_route_len, replace=False
+        )
     else:
         trips_to_noise = list(route.route)
         n_routes_to_gen = new_route_len - len(trips_to_noise)
@@ -300,6 +301,7 @@ def get_sampler_from_config(sampling_config: Dict[str, Any]) -> IntSampler:
         raise Exception("No such sampler!")
 
     return sampler(*low_high)
+
 
 def generate_dataset(config_path, idx=0):
     start = time.time()
