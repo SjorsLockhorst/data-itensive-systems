@@ -1,8 +1,12 @@
 from time import perf_counter as time
+from typing import Final
 
 from pyspark.sql import functions as F
 
-from cost import calc_payment
+from cost import TOTAL_COST, calc_payment
+
+MAX_DISTANCE: Final = 12
+MAX_DISTANCE_RECIPROCAL: Final = 1 / MAX_DISTANCE
 
 
 def calculate_payment(similar_df):
@@ -10,16 +14,15 @@ def calculate_payment(similar_df):
 
     euclid_cost_start = time()
 
-    max_dist = similar_df.agg(F.max(F.col("EuclideanDistance"))).collect()[0][0]
-    min_dist = 0
+    #  max_dist = similar_df.agg(F.max(F.col("EuclideanDistance"))).collect()[0][0]
+    #  min_dist = 0
 
     cost_df = similar_df.withColumn(
         "NormEuclideanDistance",
-        (F.col("EuclideanDistance") - min_dist)
-        / max_dist,  # * (lower + (upper - lower))
+        F.col("EuclideanDistance") * MAX_DISTANCE_RECIPROCAL,
     )
     cost_df = cost_df.withColumn(
-        "euclidian_payment", (1 - F.col("NormEuclideanDistance")) * 1000
+        "euclidian_payment", (1 - F.col("NormEuclideanDistance")) * TOTAL_COST
     )
 
     print(f"Found cost based on euclidian similiarity in {time() - euclid_cost_start}s")
@@ -31,8 +34,8 @@ def calculate_payment_semantically(similar_df, actual, planned):
     joined_preds = (
         similar_df.select(
             [
-                F.col("datasetA.uuid").alias("actual_uuid"),
-                F.col("datasetB.uuid").alias("planned_uuid"),
+                F.col("actual_route_uuid").alias("actual_uuid"),
+                F.col("predicted_original_route_uuid").alias("planned_uuid"),
             ]
         )
         .join(
@@ -63,7 +66,7 @@ def calculate_payment_semantically(similar_df, actual, planned):
 def evaluate_accuracy_cost(euclidian_cost_df, semantic_cost_df):
     preds_with_payment = euclidian_cost_df.join(
         semantic_cost_df,
-        euclidian_cost_df.datasetA.uuid == semantic_cost_df.actual_uuid,
+        euclidian_cost_df.actual_route_uuid == semantic_cost_df.actual_uuid,
     )
     print(
         preds_with_payment.select(["euclidian_payment", "semantic_payment"])

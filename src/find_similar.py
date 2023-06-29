@@ -24,7 +24,6 @@ def find_similar(planned, actual):
         threshold=float("inf"),
         distCol="EuclideanDistance",
     )
-    #  print(f"Did {result.count()} comparisons")
     print(f"Comparing data {time() - compare_start:.4f}s")
 
     # Get the nearest neighbor from the transformed_planned_df
@@ -38,12 +37,19 @@ def find_similar(planned, actual):
     # Join back to get the full row information from planned_df
     similar_df = nearest_neighbors.join(result, ["datasetA", "EuclideanDistance"])
     print(f"Joined back based on distance minima {time() - join_start:.4f}s")
-    return similar_df
+
+    return similar_df.select(
+        F.col("datasetA.uuid").alias("actual_route_uuid"),
+        F.col("datasetA.original_route_uuid").alias("original_route_uuid"),
+        F.col("datasetB.uuid").alias("predicted_original_route_uuid"),
+        F.col("EuclideanDistance"),
+    )
 
 
 def evaluate_accuracy(similar_df, actual_df):
+    print("Measuring accuracy")
     count = similar_df.filter(
-        similar_df.datasetA.original_route_uuid == similar_df.datasetB.uuid
+        similar_df.original_route_uuid == similar_df.predicted_original_route_uuid
     ).count()
 
     print(f"Number of rows where 'original_route_uuid' equals to 'uuid': {count}")
