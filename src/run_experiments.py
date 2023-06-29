@@ -11,6 +11,7 @@ from cost_calculations import (
 from data_gen import generate_dataset
 from data_loader import load_and_vectorize
 from find_similar import evaluate_accuracy, find_similar
+from pay_drivers import pay_drivers
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 experiment_path = os.path.join(DIR_PATH, "experiments.yaml")
@@ -38,6 +39,7 @@ def run(idx, evaluate_semantic_cost=False):
             euclidian_cost_df=euclidian_cost_df, semantic_cost_df=semantic_cost_df
         )
 
+    pay_drivers(cost_df=euclidian_cost_df)
     print(f"{time() - global_start:.4f}s elapsed in total.")
 
 

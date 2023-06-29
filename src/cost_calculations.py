@@ -2,7 +2,7 @@ from time import perf_counter as time
 
 from pyspark.sql import functions as F
 
-from cost import calc_payment
+from cost import TOTAL_COST, calc_payment
 
 
 def calculate_payment(similar_df):
@@ -19,7 +19,7 @@ def calculate_payment(similar_df):
         / max_dist,  # * (lower + (upper - lower))
     )
     cost_df = cost_df.withColumn(
-        "euclidian_payment", (1 - F.col("NormEuclideanDistance")) * 1000
+        "euclidian_payment", (1 - F.col("NormEuclideanDistance")) * TOTAL_COST
     )
 
     print(f"Found cost based on euclidian similiarity in {time() - euclid_cost_start}s")
