@@ -9,7 +9,8 @@ DEPOSIT_FEE_PER_REMAINDER: Final = 0.01
 def pay_drivers(cost_df, print_buckets=False):
     # Rename the column for ease of use
     cost_df = cost_df.select(
-        F.col("datasetA.uuid").alias("uuid"), F.col("euclidian_payment").alias("value")
+        F.col("actual_route_uuid").alias("uuid"),
+        F.col("euclidian_payment").alias("value"),
     )
 
     cost_df = cost_df.sort(cost_df["value"].desc())

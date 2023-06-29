@@ -17,7 +17,7 @@ DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 experiment_path = os.path.join(DIR_PATH, "experiments.yaml")
 
 
-def run(idx, evaluate_semantic_cost=False):
+def run(idx, measure_accuracy=False, evaluate_semantic_cost=False):
     global_start = time()
 
     vec_start = time()
@@ -31,8 +31,11 @@ def run(idx, evaluate_semantic_cost=False):
     similar_df = find_similar(planned_vecs, actual_vecs)
     print(f"Finding similar routes in total took {time() - similar_start:.4f}s.\n")
 
-    evaluate_accuracy(similar_df, actual_vecs)
+    if measure_accuracy:
+        evaluate_accuracy(similar_df, actual_vecs)
+
     euclidian_cost_df = calculate_payment(similar_df=similar_df)
+
     if evaluate_semantic_cost:
         semantic_cost_df = calculate_payment_semantically(similar_df, actual, planned)
         evaluate_accuracy_cost(
