@@ -231,6 +231,7 @@ def noise_route(
         for i in range(n_routes_to_gen):
             trip = data_gen.gen_trip(prev_trip_city)
             extra_trips.append(trip)
+            trips_to_noise.append(trip)
             prev_trip_city = extra_trips[i].from_city
 
     noised_trips = []

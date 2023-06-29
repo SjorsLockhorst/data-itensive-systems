@@ -1,2 +1,2 @@
 runs:
-  - data_gen_config.yaml
+  0: data_gen_config.yaml

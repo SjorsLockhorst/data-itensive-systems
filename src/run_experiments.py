@@ -50,7 +50,7 @@ if __name__ == "__main__":
     with open(experiment_path, encoding="utf-8") as f:
         experiment_conf = yaml.safe_load(f)
 
-    for idx, config_path in enumerate(experiment_conf["runs"]):
+    for idx, config_path in experiment_conf["runs"].items():
         if not os.path.exists(f"planned_routes_{idx}.json") or not os.path.exists(
             f"actual_routes_{idx}.json"
         ):
