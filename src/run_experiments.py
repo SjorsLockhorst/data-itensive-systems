@@ -1,4 +1,5 @@
 import os
+import sys
 from time import perf_counter as time
 from typing import Final
 
@@ -19,8 +20,9 @@ from pay_drivers import pay_drivers
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 EXPERIMENTS_DIR = os.path.join(DIR_PATH, "..", "experiments")
 experiments = sorted([os.path.join(EXPERIMENTS_DIR, experiment_file)
-               for experiment_file in os.listdir(EXPERIMENTS_DIR)])
+                      for experiment_file in os.listdir(EXPERIMENTS_DIR)])
 DATA_DIR: Final = os.path.join(DIR_PATH, "..", "data")
+RESULTS_DIR: Final = os.path.join(DIR_PATH, "..", "results")
 
 
 def run(idx, measure_accuracy=False, evaluate_semantic_cost=False, threshold=20):
@@ -31,7 +33,8 @@ def run(idx, measure_accuracy=False, evaluate_semantic_cost=False, threshold=20)
     planned_vecs = planned.drop("route")
     actual_vecs = actual.drop("route")
 
-    similar_df, comparisons = find_similar(planned_vecs, actual_vecs, threshold=threshold)
+    similar_df, comparisons = find_similar(
+        planned_vecs, actual_vecs, threshold=threshold)
     similar_df.cache()
 
     acc = None
@@ -42,7 +45,8 @@ def run(idx, measure_accuracy=False, evaluate_semantic_cost=False, threshold=20)
     euclid_payment_mean = None
     euclid_payment_stdev = None
 
-    euclidian_cost_df = calculate_payment(similar_df=similar_df, norm_weight=1/threshold).cache()
+    euclidian_cost_df = calculate_payment(
+        similar_df=similar_df, norm_weight=1/threshold).cache()
     euclid_payment_mean = euclidian_cost_df.select(
         F.mean(euclidian_cost_df.euclidian_payment)).collect()[0][0]
     euclid_payment_stdev = euclidian_cost_df.select(
@@ -89,11 +93,45 @@ def run(idx, measure_accuracy=False, evaluate_semantic_cost=False, threshold=20)
 
 
 if __name__ == "__main__":
-    INCLUDE_ANALYTICS = False
-    FORCE_REGENERATE_DATA = False
+    # INCLUDE_ANALYTICS = False
+
+    FORCE_REGENERATE_DATA = True
     MEASURE_ACCURACY = True
     EVALUATE_SEMANTIC_COST = True
+
     THRESHOLD = 6.5
+    COLUMNS = [
+        "idx",
+        "n_planned",
+        "n_actual",
+        "runtime",
+        "total_comparisons",
+        "accuracy",
+        "avg_euclid_payment",
+        "std_euclid_payment",
+        "avg_semantic_payment",
+        "std_semantic_payment",
+        "semantic_euclid_payment_corr",
+        "total_remainder_fee",
+        "avg_remainder_fee",
+        "n_withdrawls"
+    ]
+
+    if len(sys.argv) != 2:
+        print("Usage: python script.py <experiment_number|'all'>")
+        sys.exit(1)
+
+    experiments_to_run = []
+
+    arg = sys.argv[1]
+    if arg == "all":
+        experiments_to_run = experiments
+    else:
+        try:
+            experiment_number = int(arg)
+            experiments_to_run = [experiment_number]
+        except ValueError:
+            print("Invalid argument. Please provide either an integer or 'all'.")
 
     result_list = []
     for experiment_path in experiments:
@@ -101,10 +139,6 @@ if __name__ == "__main__":
             experiment_conf = yaml.safe_load(f)
 
         idx = int(os.path.splitext(os.path.split(experiment_path)[1])[0])
-
-        print(idx)
-        if idx != 3:
-            continue
 
         planned_routes_path = os.path.join(
             DATA_DIR, f"planned_routes_{idx}.json")
@@ -117,34 +151,22 @@ if __name__ == "__main__":
             generate_dataset(experiment_path, idx=idx)
 
         results = run(
-                idx,
-                measure_accuracy=MEASURE_ACCURACY,
-                evaluate_semantic_cost=EVALUATE_SEMANTIC_COST,
-                threshold=THRESHOLD
+            idx,
+            measure_accuracy=MEASURE_ACCURACY,
+            evaluate_semantic_cost=EVALUATE_SEMANTIC_COST,
+            threshold=THRESHOLD
         )
         info = [idx, experiment_conf["n_planned_routes"],
                 experiment_conf["n_actual_routes"]]
         all_results = info + results
-        print(all_results)
-        result_list.append(all_results)
 
-    results_df = pd.DataFrame(
-        result_list,
-        columns=["idx",
-            "n_planned",
-            "n_actual",
-            "runtime",
-            "total_comparisons",
-            "accuracy",
-            "avg_euclid_payment",
-            "std_euclid_payment",
-            "avg_semantic_payment",
-            "std_semantic_payment",
-            "semantic_euclid_payment_corr",
-            "total_remainder_fee",
-            "avg_remainder_fee",
-            "n_withdrawls",
-        ],
-        index="idx"
-    )
-    print(results_df)
+        data = {column: value for column, value in zip(COLUMNS, all_results)}
+        results_df = pd.DataFrame(
+            [data],
+        )
+        results_df.set_index("idx")
+        results_df.to_csv(os.path.join(RESULTS_DIR, f"{idx}_results.csv"))
+        result_list.append(results_df)
+
+    all_results = pd.concat(result_list)
+    all_results.to_csv(os.path.join(RESULTS_DIR, "all_results.csv"))

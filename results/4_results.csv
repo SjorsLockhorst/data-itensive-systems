@@ -1,0 +1,2 @@
+,idx,n_planned,n_actual,runtime,total_comparisons,accuracy,avg_euclid_payment,std_euclid_payment,avg_semantic_payment,std_semantic_payment,semantic_euclid_payment_corr,total_remainder_fee,avg_remainder_fee,n_withdrawls
+0,4,100,40000,29.684936855999695,39724,0.99135,752.2979266679594,170.2181587186769,870.8889915661777,28.330200158265214,-0.21432624939844444,1668.7342005538947,27.812236675898244,60
