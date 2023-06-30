@@ -10,10 +10,13 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run
+Run 
 
 ```bash
-python data_gen.py
+python src/run_experiments.py all
 ```
+to run all experiments, or use one specific experiment (e.g. 5) as follows:
 
-to generate 10 random routes and print them on the screen.
+```bash
+python src/run_experiments.py 5
+```

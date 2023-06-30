@@ -99,7 +99,7 @@ if __name__ == "__main__":
     MEASURE_ACCURACY = True
     EVALUATE_SEMANTIC_COST = True
 
-    THRESHOLD = 6.5
+    THRESHOLD = 7
     COLUMNS = [
         "idx",
         "n_planned",
