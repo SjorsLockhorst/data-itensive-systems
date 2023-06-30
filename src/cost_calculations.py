@@ -3,10 +3,11 @@ from typing import Final
 
 from pyspark.sql import functions as F
 
+from vectorize import VEC_MAX_DIST
+
 from cost import TOTAL_COST, calc_payment
 
-MAX_DISTANCE: Final = 12
-MAX_DISTANCE_RECIPROCAL: Final = 1 / MAX_DISTANCE
+MAX_DISTANCE_RECIPROCAL: Final = 1 / VEC_MAX_DIST
 
 
 def calculate_payment(similar_df):

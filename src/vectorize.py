@@ -1,4 +1,5 @@
 from itertools import product
+import math
 from typing import Final
 
 import yaml
@@ -21,6 +22,7 @@ MERCH_ITEM_MAX: Final = (
 )
 
 NORMALIZATION_RECIPROCAL: Final = 1 / (MERCH_ITEM_MAX - MERCH_ITEM_MIN)
+VEC_MAX_DIST = math.sqrt(len(_cities) * (len(_cities) - 1) * len(_merch_items))
 
 _combinations = list(product(_cities, _cities, _merch_items))
 _combinations = [
@@ -45,9 +47,9 @@ def create_vectors(routes):
             ) * NORMALIZATION_RECIPROCAL
             vector_index = VECTOR_MAP[(route.from_city, route.to_city, merch_name)]
             if vector_index in vector_elements:
-                vector_elements[vector_index] += normalized_weight
+                vector_elements[vector_index] += normalized_weight + NORMALIZATION_RECIPROCAL
             else:
-                vector_elements[vector_index] = normalized_weight
+                vector_elements[vector_index] = normalized_weight + NORMALIZATION_RECIPROCAL
 
     return Vectors.sparse(VECTOR_SIZE, vector_elements)
 

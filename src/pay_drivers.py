@@ -1,5 +1,7 @@
 from typing import Final
+
 import pyspark.sql.functions as F
+import numpy as np
 
 
 RETRIEVE_AMOUNT: Final = 500_000
@@ -42,4 +44,5 @@ def pay_drivers(cost_df, print_buckets=False):
 
     # Print the total remaining space across all buckets
     print(f"Total remainder fee: {sum(remainders) * DEPOSIT_FEE_PER_REMAINDER:.2f} EUR")
+    print(f"Average remainder fee: {np.mean(remainders) * DEPOSIT_FEE_PER_REMAINDER:.2f} EUR")
     print(f"Total retrievals: {len(buckets)}")

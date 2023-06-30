@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field  # type: ignore
 from tqdm import tqdm
 
 DIR_PATH: Final = os.path.dirname(os.path.realpath(__file__))
+DATA_DIR: Final = os.path.join(DIR_PATH, "..", "data")
 CONFIG_PATH: Final = os.path.join(DIR_PATH, "data_gen_config.yaml")
 
 K = TypeVar("K")
@@ -359,9 +360,12 @@ def generate_dataset(config_path, idx=0):
         )
         actual_routes.append(actual_route)
 
-    with open(f"planned_routes_{idx}.json", "w", encoding="utf-8") as f:
+    planned_routes_filename = os.path.join(DATA_DIR, f"planned_routes_{idx}.json")
+    actual_routes_filename = os.path.join(DATA_DIR, f"actual_routes_{idx}.json")
+
+    with open(planned_routes_filename, "w", encoding="utf-8") as f:
         f.write(json.dumps([route.dict() for route in planned_routes]))
-    with open(f"actual_routes_{idx}.json", "w", encoding="utf-8") as f:
+    with open(actual_routes_filename, "w", encoding="utf-8") as f:
         f.write(json.dumps([route.dict() for route in actual_routes]))
 
     end = time.time()

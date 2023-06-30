@@ -1,3 +1,6 @@
+import os
+from typing import Final
+
 from pyspark.sql import SparkSession
 from pyspark.sql.types import (
     ArrayType,
@@ -7,8 +10,10 @@ from pyspark.sql.types import (
     StructField,
     StructType,
 )
-
 from vectorize import vectorize_routes
+
+DIR_PATH: Final = os.path.dirname(os.path.realpath(__file__))
+DATA_DIR: Final = os.path.join(DIR_PATH, "..", "data")
 
 spark = (
     SparkSession.builder.appName("Pay Routes")
@@ -45,8 +50,11 @@ def load_json_to_spark(file_name):
 
 
 def load_and_vectorize(idx=0):
-    planned_routes_df = load_json_to_spark(f"planned_routes_{idx}.json")
-    actual_routes_df = load_json_to_spark(f"actual_routes_{idx}.json")
+
+    planned_routes_path = os.path.join(DATA_DIR, f"planned_routes_{idx}.json")
+    actual_routes_path = os.path.join(DATA_DIR, f"actual_routes_{idx}.json")
+    planned_routes_df = load_json_to_spark(planned_routes_path)
+    actual_routes_df = load_json_to_spark(actual_routes_path)
     planned_df = vectorize_routes(planned_routes_df)
     actual_df = vectorize_routes(actual_routes_df)
     return (planned_df, actual_df)
