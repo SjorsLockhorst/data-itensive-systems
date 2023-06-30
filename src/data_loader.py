@@ -55,6 +55,6 @@ def load_and_vectorize(idx=0):
     actual_routes_path = os.path.join(DATA_DIR, f"actual_routes_{idx}.json")
     planned_routes_df = load_json_to_spark(planned_routes_path)
     actual_routes_df = load_json_to_spark(actual_routes_path)
-    planned_df = vectorize_routes(planned_routes_df)
-    actual_df = vectorize_routes(actual_routes_df)
+    planned_df = vectorize_routes(planned_routes_df, idx)
+    actual_df = vectorize_routes(actual_routes_df, idx)
     return (planned_df, actual_df)

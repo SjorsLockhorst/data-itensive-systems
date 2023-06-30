@@ -42,7 +42,13 @@ def pay_drivers(cost_df, print_buckets=False):
                 print(f"  UUID: {uuid}, Value: {value}")
                 print(f"  Remainder: {remainders[i]}")
 
+    total_remaining = sum(remainders) * DEPOSIT_FEE_PER_REMAINDER
+    avg_remaining = np.mean(remainders) * DEPOSIT_FEE_PER_REMAINDER
+    total_withdrew = len(buckets)
+
     # Print the total remaining space across all buckets
     print(f"Total remainder fee: {sum(remainders) * DEPOSIT_FEE_PER_REMAINDER:.2f} EUR")
     print(f"Average remainder fee: {np.mean(remainders) * DEPOSIT_FEE_PER_REMAINDER:.2f} EUR")
-    print(f"Total retrievals: {len(buckets)}")
+    print(f"Total retrievals: {total_withdrew}")
+
+    return total_remaining, avg_remaining, total_withdrew

@@ -10,17 +10,14 @@ from cost import TOTAL_COST, calc_payment
 MAX_DISTANCE_RECIPROCAL: Final = 1 / VEC_MAX_DIST
 
 
-def calculate_payment(similar_df):
+def calculate_payment(similar_df, norm_weight=MAX_DISTANCE_RECIPROCAL):
     print("Calculating cost function based on norm. euclidean distance")
 
     euclid_cost_start = time()
 
-    #  max_dist = similar_df.agg(F.max(F.col("EuclideanDistance"))).collect()[0][0]
-    #  min_dist = 0
-
     cost_df = similar_df.withColumn(
         "NormEuclideanDistance",
-        F.col("EuclideanDistance") * MAX_DISTANCE_RECIPROCAL,
+        F.col("EuclideanDistance") * norm_weight,
     )
     cost_df = cost_df.withColumn(
         "euclidian_payment", (1 - F.col("NormEuclideanDistance")) * TOTAL_COST
@@ -75,4 +72,4 @@ def evaluate_accuracy_cost(euclidian_cost_df, semantic_cost_df):
         .show()
     )
     print(preds_with_payment.describe().show())
-    print(preds_with_payment.stat.corr("semantic_payment", "euclidian_payment"))
+    return preds_with_payment.stat.corr("semantic_payment", "euclidian_payment")
