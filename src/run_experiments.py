@@ -18,7 +18,7 @@ from find_similar import evaluate_accuracy, find_similar
 from pay_drivers import pay_drivers
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
-EXPERIMENTS_DIR = os.path.join(DIR_PATH, "..", "experiments")
+EXPERIMENTS_DIR = os.path.join(DIR_PATH, "experiments")
 experiments = sorted([os.path.join(EXPERIMENTS_DIR, experiment_file)
                       for experiment_file in os.listdir(EXPERIMENTS_DIR)])
 DATA_DIR: Final = os.path.join(DIR_PATH, "..", "data")
@@ -93,7 +93,6 @@ def run(idx, measure_accuracy=False, evaluate_semantic_cost=False, threshold=20)
 
 
 if __name__ == "__main__":
-    # INCLUDE_ANALYTICS = False
     FORCE_REGENERATE_DATA = False
     MEASURE_ACCURACY = True
     EVALUATE_SEMANTIC_COST = True

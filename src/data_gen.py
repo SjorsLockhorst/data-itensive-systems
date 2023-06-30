@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 DIR_PATH: Final = os.path.dirname(os.path.realpath(__file__))
 DATA_DIR: Final = os.path.join(DIR_PATH, "..", "data")
-EXP_DIR: Final = os.path.join(DIR_PATH, "..", "experiments")
+EXP_DIR: Final = os.path.join(DIR_PATH, "experiments")
 CONFIG_PATH: Final = os.path.join(EXP_DIR, "1.yaml")
 
 K = TypeVar("K")
