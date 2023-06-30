@@ -94,8 +94,7 @@ def run(idx, measure_accuracy=False, evaluate_semantic_cost=False, threshold=20)
 
 if __name__ == "__main__":
     # INCLUDE_ANALYTICS = False
-
-    FORCE_REGENERATE_DATA = True
+    FORCE_REGENERATE_DATA = False
     MEASURE_ACCURACY = True
     EVALUATE_SEMANTIC_COST = True
 
